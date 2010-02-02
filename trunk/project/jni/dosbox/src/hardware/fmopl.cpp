@@ -70,8 +70,6 @@ Revision History:
 #endif
 
 
-// added by Gerald
-#define INLINE inline
 
 /* output final shift */
 #if (OPL_SAMPLE_BITS==16)
@@ -84,9 +82,6 @@ Revision History:
 	#define MINOUT		(-128)
 #endif
 
-
-// added by Gerald
-#define logerror 
 
 #define FREQ_SH			16  /* 16.16 fixed point (frequency calculations) */
 #define EG_SH			16  /* 16.16 fixed point (EG timing)              */
@@ -650,7 +645,6 @@ static INT32 output_deltat[4];		/* for Y8950 DELTA-T, chip is mono, that 4 here 
 
 static UINT32	LFO_AM;
 static INT32	LFO_PM;
-
 
 
 INLINE int limit( int val, int max, int min ) {

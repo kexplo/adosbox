@@ -575,7 +575,7 @@ bool cdromDrive::FileOpen(DOS_File * * file,char * name,Bit32u flags) {
 		return false;
 	}
 	bool retcode = localDrive::FileOpen(file,name,flags);
-	if(retcode) (dynamic_cast<localFile*>(*file))->FlagReadOnlyMedium();
+	if(retcode) (static_cast<localFile*>(*file))->FlagReadOnlyMedium();
 	return retcode;
 }
 
