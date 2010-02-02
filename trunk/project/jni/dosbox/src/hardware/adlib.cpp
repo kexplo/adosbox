@@ -34,7 +34,7 @@
 #include "adlib.h"
 #include "mem.h"
 
-/* 
+/*
 	Thanks to vdmsound for nice simple way to implement this
 */
 
@@ -62,7 +62,8 @@ struct __MALLOCPTR {
 namespace OPL2 {
 	#define OPL2_INTERNAL_FREQ    3600000   // The OPL2 operates at 3.6MHz
 	#define HAS_YM3812 1
-	#include "fmopl.cpp"
+	// #include "fmopl.cpp"
+	#include "fmopl.cxx"
 
 	struct Handler : public Adlib::Handler {
 		virtual void WriteReg( Bit32u reg, Bit8u val ) {
@@ -84,7 +85,7 @@ namespace OPL2 {
 		}
 		virtual void Init( Bitu rate ) {
 			if ( YM3812Init( 1, OPL2_INTERNAL_FREQ, rate )) {
-				E_Exit("Can't create OPL2 Emulator");	
+				E_Exit("Can't create OPL2 Emulator");
 			};
 		}
 		~Handler() {
@@ -98,7 +99,8 @@ namespace OPL2 {
 namespace THEOPL3 {
 	#define OPL3_INTERNAL_FREQ    14400000  // The OPL3 operates at 14.4MHz
 	#define HAS_YMF262 1
-	#include "ymf262.cpp"
+	// #include "ymf262.cpp"
+	#include "ymf262.cxx"
 
 	struct Handler : public Adlib::Handler {
 		virtual void WriteReg( Bit32u reg, Bit8u val ) {
@@ -119,7 +121,7 @@ namespace THEOPL3 {
 		}
 		virtual void Init( Bitu rate ) {
 			if ( YMF262Init( 1, OPL3_INTERNAL_FREQ, rate )) {
-				E_Exit("Can't create OPL3 Emulator");	
+				E_Exit("Can't create OPL3 Emulator");
 			};
 		}
 		~Handler() {
@@ -160,14 +162,14 @@ struct RawHeader {
 	Bit8u format;				/* 0x15, Bit8u Format 0=cmd/data interleaved, 1 maybe all cdms, followed by all data */
 	Bit8u compression;			/* 0x16, Bit8u Compression Type, 0 = No Compression */
 	Bit8u delay256;				/* 0x17, Bit8u Delay 1-256 msec command */
-	Bit8u delayShift8;			/* 0x18, Bit8u (delay + 1)*256 */			
+	Bit8u delayShift8;			/* 0x18, Bit8u (delay + 1)*256 */
 	Bit8u conversionTableSize;	/* 0x191, Bit8u Raw Conversion Table size */
 } GCC_ATTRIBUTE(packed);
 #ifdef _MSC_VER
 #pragma pack()
 #endif
 /*
-	The Raw Tables is < 128 and is used to convert raw commands into a full register index 
+	The Raw Tables is < 128 and is used to convert raw commands into a full register index
 	When the high bit of a raw command is set it indicates the cmd/data pair is to be sent to the 2nd port
 	After the conversion table the raw data follows immediatly till the end of the chunk
 */
@@ -214,8 +216,8 @@ class Capture {
 		for ( int i = 0 ; i < 24; i++ ) {
 			if ( (i & 7) < 6 ) {
 				MakeEntry(0x20 + i, index );		//20-35: Tremolo / Vibrato / Sustain / KSR / Frequency Multiplication Facto
-				MakeEntry(0x40 + i, index );		//40-55: Key Scale Level / Output Level 
-				MakeEntry(0x60 + i, index );		//60-75: Attack Rate / Decay Rate 
+				MakeEntry(0x40 + i, index );		//40-55: Key Scale Level / Output Level
+				MakeEntry(0x60 + i, index );		//60-75: Attack Rate / Decay Rate
 				MakeEntry(0x80 + i, index );		//80-95: Sustain Level / Release Rate
 				MakeEntry(0xe0 + i, index );		//E0-F5: Waveform Select
 			}
@@ -223,14 +225,14 @@ class Capture {
 		//Add the 9 byte range that hold the 9 channels
 		for ( int i = 0 ; i < 9; i++ ) {
 			MakeEntry(0xa0 + i, index );			//A0-A8: Frequency Number
-			MakeEntry(0xb0 + i, index );			//B0-B8: Key On / Block Number / F-Number(hi bits) 
+			MakeEntry(0xb0 + i, index );			//B0-B8: Key On / Block Number / F-Number(hi bits)
 			MakeEntry(0xc0 + i, index );			//C0-C8: FeedBack Modulation Factor / Synthesis Type
 		}
 		//Store the amount of bytes the table contains
 		RawUsed = index;
 //		assert( RawUsed <= 127 );
 		delay256 = RawUsed;
-		delayShift8 = RawUsed+1; 
+		delayShift8 = RawUsed+1;
 	}
 
 	void ClearBuf( void ) {
@@ -254,7 +256,7 @@ class Capture {
 		//Enabling opl3 4op modes will make us go into opl3 mode
 		if ( header.hardware != HW_OPL3 && regFull == 0x104 && val && (*cache)[0x105] ) {
 			header.hardware = HW_OPL3;
-		} 
+		}
 		//Writing a keyon to a 2nd address enables dual opl2 otherwise
 		//Maybe also check for rhythm
 		if ( header.hardware == HW_OPL2 && regFull >= 0x1b0 && regFull <=0x1b8 && val ) {
@@ -272,7 +274,7 @@ class Capture {
 		/* Check the registers to add */
 		for (i=0;i<256;i++) {
 			//Skip the note on entries
-			if (i>=0xb0 && i<=0xb8) 
+			if (i>=0xb0 && i<=0xb8)
 				continue;
 			val = (*cache)[ i ];
 			if (val) {
@@ -319,7 +321,7 @@ public:
 			if ( raw == 0xff ) {
 				return true;
 			}
-			/* Check if this command will not just replace the same value 
+			/* Check if this command will not just replace the same value
 			   in a reg that doesn't do anything with it
 			*/
 			if ( (*cache)[ regFull ] == val )
@@ -330,11 +332,11 @@ public:
 			header.milliseconds += passed;
 
 			//if ( passed > 0 ) LOG_MSG( "Delay %d", passed ) ;
-			
+
 			// If we passed more than 30 seconds since the last command, we'll restart the the capture
 			if ( passed > 30000 ) {
 				CloseFile();
-				goto skipWrite; 
+				goto skipWrite;
 			}
 			while (passed > 0) {
 				if (passed < 257) {			//1-256 millisecond delay
@@ -353,7 +355,7 @@ skipWrite:
 		//Not yet capturing to a file here
 		//Check for commands that would start capturing, if it's not one of them return
 		if ( !(
-			//note on in any channel 
+			//note on in any channel
 			( regMask>=0xb0 && regMask<=0xb8 && (val&0x020) ) ||
 			//Percussion mode enabled and a note on in any percussion instrument
 			( regMask == 0xbd && ( (val&0x3f) > 0x20 ) )
@@ -373,7 +375,7 @@ skipWrite:
 		/* Write the command that triggered this */
 		AddWrite( regFull, val );
 		//Init the timing information for the next commands
-		lastTicks = PIC_Ticks;	
+		lastTicks = PIC_Ticks;
 		startTicks = PIC_Ticks;
 		return true;
 	}
@@ -462,16 +464,16 @@ void Module::CacheWrite( Bit32u reg, Bit8u val ) {
 
 void Module::DualWrite( Bit8u index, Bit8u reg, Bit8u val ) {
 	//Make sure you don't use opl3 features
-	//Don't allow write to disable opl3		
+	//Don't allow write to disable opl3
 	if ( reg == 5 ) {
 		return;
 	}
 	//Only allow 4 waveforms
 	if ( reg >= 0xE0 ) {
 		val &= 3;
-	} 
+	}
 	//Write to the timer?
-	if ( chip[index].Write( reg, val ) ) 
+	if ( chip[index].Write( reg, val ) )
 		return;
 	//Enabling panning
 	if ( reg >= 0xc0 && reg <0xc8 ) {
@@ -677,7 +679,7 @@ public:
 	}
 	~OPL() {
 #if 0
-		if ( module.capture )  
+		if ( module.capture )
 			delete module.capture;
 #endif
 		OPL2::YM3812Shutdown();

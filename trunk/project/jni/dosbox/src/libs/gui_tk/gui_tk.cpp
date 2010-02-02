@@ -1225,7 +1225,7 @@ void Frame::paint(Drawable &d) const {
 	d.drawLine((label.empty()?8:f->getWidth(label)+14),top,width-2,top);
 	d.drawLine(2,height-3,width-3,height-3);
 	d.drawLine(width-3,top+1);
-	
+
 	d.setColor(Color::Light3D);
 	d.drawLine(2,height-3,2,top+1);
 	d.drawLine(8,top+1);
@@ -1237,7 +1237,7 @@ void Frame::paint(Drawable &d) const {
 	d.drawText(11,f->getAscent()+1,label,false,0);
 }
 
-Screen *Window::getScreen() { return (parent == NULL?dynamic_cast<Screen*>(this):parent->getScreen()); }
+Screen *Window::getScreen() { return (parent == NULL?static_cast<Screen*>(this):parent->getScreen()); }
 
 Screen::Screen(unsigned int width, unsigned int height) :
 	Window(),
@@ -1583,7 +1583,7 @@ int main(int argc, char *argv[])
 	GUI::ToplevelWindow *frame = new GUI::ToplevelWindow(&guiscreen,205,100,380,250,"GUI::Frame");
 	static struct delwin : public GUI::ActionEventSource_Callback {
 		void actionExecuted(GUI::ActionEventSource *b, const GUI::String &arg) {
-			dynamic_cast<GUI::ToplevelWindow *>(dynamic_cast<GUI::Button*>(b)->getParent())->close();
+			static_cast<GUI::ToplevelWindow *>(static_cast<GUI::Button*>(b)->getParent())->close();
 		}
 	} dw;
 	struct newwin : public GUI::ActionEventSource_Callback {
