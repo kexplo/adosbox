@@ -417,8 +417,8 @@ private:
 		localDrive* ldp=0;
 		if (!DOS_MakeName(const_cast<char*>(filename),fullname,&drive)) return NULL;
 
-		try {		
-			ldp=dynamic_cast<localDrive*>(Drives[drive]);
+		//try {		
+			ldp=static_cast<localDrive*>(Drives[drive]);
 			if(!ldp) return NULL;
 
 			tmpfile = ldp->GetSystemFilePtr(fullname, "rb");
@@ -446,10 +446,10 @@ private:
 			}
 
 			return tmpfile;
-		}
+		/*}
 		catch(...) {
 			return NULL;
-		}
+		}*/
 	}
    
 	FILE *getFSFile(char const * filename, Bit32u *ksize, Bit32u *bsize,bool tryload=false) {
@@ -787,8 +787,8 @@ public:
 		localDrive* ldp=0;
 		if (!DOS_MakeName((char *)temp_line.c_str(),fullname,&drive)) return;
 
-		try {		
-			ldp=dynamic_cast<localDrive*>(Drives[drive]);
+		//try {		
+			ldp=static_cast<localDrive*>(Drives[drive]);
 			if(!ldp) return;
 
 			FILE *tmpfile = ldp->GetSystemFilePtr(fullname, "rb");
@@ -815,10 +815,10 @@ public:
 
 			rom_base=PhysMake(0xf000,0);
 			phys_writeb(rom_base+0xf065,0xcf);
-		}
+		/*}
 		catch(...) {
 			return;
-		}
+		}*/
 
 		reg_flags&=~FLAG_IF;
 		CALLBACK_RunRealFar(0xc000,0x0003);
@@ -1094,7 +1094,7 @@ public:
 							return;
 						}
 
-						localDrive *ldp = dynamic_cast<localDrive*>(Drives[dummy]);
+						localDrive *ldp = static_cast<localDrive*>(Drives[dummy]);
 						if (ldp==NULL) {
 							WriteOut(MSG_Get("PROGRAM_IMGMOUNT_FILE_NOT_FOUND"));
 							return;
@@ -1157,7 +1157,7 @@ public:
 				}
 
 				newdrive=new fatDrive(temp_line.c_str(),sizes[0],sizes[1],sizes[2],sizes[3],0);
-				if(!(dynamic_cast<fatDrive*>(newdrive))->created_succesfully) {
+				if(!(static_cast<fatDrive*>(newdrive))->created_succesfully) {
 					delete newdrive;
 					newdrive = 0;
 				}

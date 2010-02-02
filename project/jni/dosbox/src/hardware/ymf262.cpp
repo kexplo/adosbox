@@ -101,10 +101,6 @@ differences between OPL2 and OPL3 shown in datasheets:
 #define EG_OFF			0
 
 
-// added by Gerald
-#define INLINE inline
-#define logerror 
-
 /* save output as raw 16-bit sample */
 
 /*#define SAVE_SAMPLE*/

@@ -607,7 +607,7 @@ bool CDROM_Interface_Image::GetRealFileName(string &filename, string &pathname)
 	Bit8u drive;
 	if (!DOS_MakeName(tmp, fullname, &drive)) return false;
 	
-	localDrive *ldp = dynamic_cast<localDrive*>(Drives[drive]);
+	localDrive *ldp = static_cast<localDrive*>(Drives[drive]);
 	if (ldp) {
 		ldp->GetSystemFilename(tmp, fullname);
 		if (stat(tmp, &test) == 0) {
