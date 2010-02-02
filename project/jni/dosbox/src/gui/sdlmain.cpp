@@ -53,8 +53,6 @@
 #include "render.h"
 extern Render_t render;
 
-#include "windows.h"
-
 //#define DISABLE_JOYSTICK
 
 #if !(ENVIRON_INCLUDED)
@@ -65,7 +63,9 @@ extern char** environ;
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+
+// FIXME
+// #include <windows.h>
 
 #define STDOUT_FILE	"stdout.txt"
 #define STDERR_FILE	"stderr.txt"
@@ -132,7 +132,7 @@ char *getcwd(char *buffer, int maxlen)
 {
 	TCHAR fileUnc[MAX_PATH+1];
 	char* plast;
-	
+
 	if(cwd[0] == 0)
 	{
 		GetModuleFileName(NULL, fileUnc, MAX_PATH);
@@ -154,11 +154,11 @@ static void WM_RenderXor(unsigned char code)
 {
 int x,y;
 
-for (x=0; x<320; x++) 
+for (x=0; x<320; x++)
     for (y=0; y<sdl.toolbar.height; y++)
         if (sdl.toolbar.keycode[x+y*320]==code)
             sdl.toolbar.gfx[(y*320+x)]^=0xFF;
-WM_UpdateToolbar();    
+WM_UpdateToolbar();
 }
 
 void CPU_CycleIncrease(bool);
@@ -201,7 +201,7 @@ static void Mouse_Right(bool pressed)
 static void MouseButton_Left(bool pressed)
 {
    if (pressed)
-   	Mouse_ButtonPressed(0); 
+   	Mouse_ButtonPressed(0);
    else
    	Mouse_ButtonReleased(0);
 }
@@ -209,7 +209,7 @@ static void MouseButton_Left(bool pressed)
 static void MouseButton_Right(bool pressed)
 {
    if (pressed)
-   	Mouse_ButtonPressed(1); 
+   	Mouse_ButtonPressed(1);
    else
    	Mouse_ButtonReleased(1);
 }
@@ -217,7 +217,7 @@ static void MouseButton_Right(bool pressed)
 static void MouseButton_Middle(bool pressed)
 {
    if (pressed)
-	Mouse_ButtonPressed(2); 
+	Mouse_ButtonPressed(2);
    else
 	Mouse_ButtonReleased(2);
 }
@@ -226,7 +226,7 @@ static void Force_Toolbar(bool pressed)
 {
    if (pressed) {
         sdl.toolbar.forced=!sdl.toolbar.forced;
-	WM_Init();	
+	WM_Init();
    }
 }
 
@@ -234,29 +234,29 @@ void WM_HandleToolbar(int x, int y, bool isdown)
 {
 
         if ((sdl.window.height-sdl.window.toolbarstart)<2) return;
-           
+
         int B=x;
         int L=y-(sdl.window.height-sdl.toolbar.vislines);
-               
-        //Option to hide toolbar?       
+
+        //Option to hide toolbar?
         if(B<0 || B>320 || L<0 || L>sdl.toolbar.vislines)
         return;
-                                              
+
         char code=sdl.toolbar.keycode[B+(L+sdl.toolbar.scrollpos)*320];
         if (code!=KBD_SC) sdl.toolbar.scrollactive=false;
-        if (code==0) return;        
+        if (code==0) return;
         bool LockKey=(code&KBD_LOCKKEY);
         code=code&0x7F;
         char ascii;
-        //Here need caps, shift, numlock aknowledgement...        
+        //Here need caps, shift, numlock aknowledgement...
         if (isdown)
         {
         switch(code)
          {
-            case KBD_capslock:   WM_RenderXor(code); break;                     
-            case KBD_numlock:    WM_RenderXor(code); break;                     
-            case KBD_scrolllock: WM_RenderXor(code); break;                     
-         }        
+            case KBD_capslock:   WM_RenderXor(code); break;
+            case KBD_numlock:    WM_RenderXor(code); break;
+            case KBD_scrolllock: WM_RenderXor(code); break;
+         }
         }
         switch(code)
         {
@@ -269,30 +269,30 @@ void WM_HandleToolbar(int x, int y, bool isdown)
                         if (isdown) CPU_CycleDecrease(true);
                         break;
             case KBD_IFS:
-                        WM_RenderXor(code);            
+                        WM_RenderXor(code);
                         if (isdown) IncreaseFrameSkip(true);
                         break;
             case KBD_DFS:
-                        WM_RenderXor(code);            
+                        WM_RenderXor(code);
                         if (isdown) DecreaseFrameSkip(true);
                         break;
             case KBD_EXIT:
                         if (isdown) E_Exit("Exit button pressed");
                         break;
-            case KBD_NT:       
+            case KBD_NT:
                         if (isdown)
-                        {           
+                        {
                         sdl.toolbar.current++;
                         if (sdl.toolbar.current>2) sdl.toolbar.current=0;
-                        WM_Init();                        
+                        WM_Init();
                         }
                         break;
-            case KBD_PT:          
+            case KBD_PT:
                         if (isdown)
                         {
                         sdl.toolbar.current--;
                         if (sdl.toolbar.current<0) sdl.toolbar.current=2;
-                        WM_Init();                        
+                        WM_Init();
                         }
                         break;
             case KBD_RMC:
@@ -300,36 +300,36 @@ void WM_HandleToolbar(int x, int y, bool isdown)
                         break;
             case KBD_LMC:
                         if (isdown) Mouse_ButtonPressed(0); else Mouse_ButtonReleased(0);
-                        break;                        
+                        break;
             case KBD_MMC:
                         if (isdown) Mouse_ButtonPressed(2); else Mouse_ButtonReleased(2);
-                        break;                        
-            case KBD_MNC:                        
+                        break;
+            case KBD_MNC:
                         if (isdown) {WM_RenderXor(code); sdl.mouse.noclick=!sdl.mouse.noclick;}
                         break;
-                        
+
             case KBD_SC:
                         sdl.toolbar.oldscpos=L;
                         sdl.toolbar.scrollactive=isdown;
                         break;
-            
-                        
+
+
         };
-        
+
         if(code<KBD_LAST)
         {
                 if(LockKey)
                 {
                         if (isdown)
-                        {        
-                            if(sdl.toolbar.pressed[code])                             
+                        {
+                            if(sdl.toolbar.pressed[code])
                                 KEYBOARD_AddKey((KBD_KEYS)code,false);
                                 else
                                 KEYBOARD_AddKey((KBD_KEYS)code,true);
-                                WM_RenderXor(code|0x80);                                
+                                WM_RenderXor(code|0x80);
                                 sdl.toolbar.pressed[code]=!sdl.toolbar.pressed[code];
-                                
-                        }        
+
+                        }
                 } else
                 {
                         if (isdown) KEYBOARD_AddKey((KBD_KEYS)code,true);
@@ -353,8 +353,8 @@ int i,j;
   if (!sdl.window.rotateright) {
   tempbuf = GAPI_Buffer + (319*240) + sdl.window.toolbarstart; //correct pointer to where upper-left corner should be
   for (i=0; i<sdl.window.height-sdl.window.toolbarstart; i++) {
-	for (j=0; j<320; j++) {	
-		tempbuf[0]=0;			
+	for (j=0; j<320; j++) {
+		tempbuf[0]=0;
 		tempbuf+=(-240);
 		}
   	tempbuf+=(319*240+240+1);
@@ -370,16 +370,16 @@ int i,j;
   	}
   }
   if (Close) {
-  	_GAPIEndDraw(); 
+  	_GAPIEndDraw();
   	GAPI_Buffer = 0;
   }
 }
 
 
 static void WM_DrawToolbar()
-{  
+{
 Bit32u i,j,k;
-Bit16u tmp;  
+Bit16u tmp;
 Bit16u * tempbuf;
 Bit16u * tbbuf;
 int offset = 0;
@@ -404,9 +404,9 @@ bool Close;
   tempbuf = GAPI_Buffer + (319*240) + (sdl.window.toolbarstart+offset); //correct pointer to where upper-left corner should be
   for (i=0; i<(sdl.toolbar.vislines-offset); i++)
   {
-	for (j=0; j<320; j++) {	
+	for (j=0; j<320; j++) {
 		tmp=tbbuf[k];
-		tempbuf[0]=tmp;			
+		tempbuf[0]=tmp;
 		tempbuf+=(-240);
 		k++;
 	}
@@ -427,7 +427,7 @@ bool Close;
   }
   }
   if (Close) {
-  	_GAPIEndDraw(); 
+  	_GAPIEndDraw();
   	GAPI_Buffer = 0;
   }
 }
@@ -442,8 +442,8 @@ void WM_UpdateToolbar()
 {
     if (sdl.toolbar.forced && sdl.toolbar.transparent && render.scale.height > sdl.window.toolbarstart) {
       WM_InvalidateToolbar();
-    } 
-    
+    }
+
     if ((sdl.window.height-sdl.window.toolbarstart)<2) return;
 
     WM_DrawToolbar();
@@ -510,7 +510,7 @@ void WM_Init()
 	sdl.window.toolbarstart = render.scale.height;
     };
 	if (sdl.toolbar.height <= (sdl.window.height-sdl.window.toolbarstart) )
-		sdl.window.toolbarstart = sdl.window.height - sdl.toolbar.height;		
+		sdl.window.toolbarstart = sdl.window.height - sdl.toolbar.height;
 	sdl.toolbar.vislines = sdl.window.height-sdl.window.toolbarstart;
         if (sdl.toolbar.vislines>(sdl.toolbar.height-sdl.toolbar.scrollpos)) sdl.toolbar.scrollpos = sdl.toolbar.height-sdl.toolbar.vislines;
 	if (sdl.toolbar.current == 2) GFX_SetTitle(-1,-1,false);
@@ -566,7 +566,12 @@ static void PauseDOSBox(bool pressed) {
 		SDL_WaitEvent(&event);    // since we're not polling, cpu usage drops to 0.
 		switch (event.type) {
 
-			case SDL_QUIT: throw(0); break;
+			case SDL_QUIT:
+                // FIXME
+                printf("bad modification!!!");
+                exit(1);
+                // throw(0);
+                break;
 			case SDL_KEYDOWN:   // Must use Pause/Break Key to resume.
 			case SDL_KEYUP:
 			if(event.key.keysym.sym==SDLK_PAUSE) {
@@ -679,13 +684,13 @@ sdl.toolbar.scrollactive=false;
 
 int  update_counter = 100;
 void WM_Update()
-{	
+{
 
 	if (sdl.mouse.needticks) sdl.mouse.delayticks++;
 
 	if (sdl.tpad.releasedelay&&sdl.tpad.on)	{
 		sdl.tpad.releasedelay--;
-		if (!sdl.tpad.releasedelay) { 
+		if (!sdl.tpad.releasedelay) {
 			if (!sdl.mouse.right) Mouse_ButtonReleased(0); else Mouse_ButtonReleased(1);
 			sdl.mouse.right=false; }
 	}
@@ -693,7 +698,7 @@ void WM_Update()
 	if (update_counter--) return;
 	update_counter = 100;
 	if (sdl.dpad.on) {
-	    if (sdl.dpad.x!=0 | sdl.dpad.y!=0) {	
+	    if (sdl.dpad.x!=0 | sdl.dpad.y!=0) {
 		Mouse_MoveCursor(sdl.dpad.x,sdl.dpad.y);
 		sdl.dpad.x=sdl.dpad.x+sdl.dpad.x/10;
 		sdl.dpad.y=sdl.dpad.y+sdl.dpad.y/10;
@@ -731,7 +736,9 @@ static void GUI_ShutDown(Section * /*sec*/) {
 static void KillSwitch(bool pressed) {
 	if (!pressed)
 		return;
-	throw 1;
+    // FIXME
+	//throw 1;
+    printf("bad modification!!!");
 }
 
 static unsigned char logo[32*32*4]= {
@@ -845,18 +852,18 @@ if (!sdl.window.rotateright) {
 }
 
       if(my>sdl.window.toolbarstart) {
-           sdl.tpad.active=false;     
-           if (sdl.toolbar.scrollactive) { 
+           sdl.tpad.active=false;
+           if (sdl.toolbar.scrollactive) {
            	int L=(my-(sdl.window.height-sdl.toolbar.vislines));
            	sdl.toolbar.scrollpos-=(L-sdl.toolbar.oldscpos);
            	sdl.toolbar.oldscpos=L;
            	if (sdl.toolbar.scrollpos<0) sdl.toolbar.scrollpos=0;
-           	if (sdl.toolbar.scrollpos>(sdl.toolbar.height-sdl.toolbar.vislines)) sdl.toolbar.scrollpos=sdl.toolbar.height-sdl.toolbar.vislines;                                                                                                                              
-           WM_UpdateToolbar();               
-           }                              
+           	if (sdl.toolbar.scrollpos>(sdl.toolbar.height-sdl.toolbar.vislines)) sdl.toolbar.scrollpos=sdl.toolbar.height-sdl.toolbar.vislines;
+           WM_UpdateToolbar();
+           }
         return;
         }
-        
+
         sdl.toolbar.scrollactive=false;
 
     if (!sdl.tpad.on)
@@ -865,12 +872,12 @@ if (!sdl.window.rotateright) {
 	if (sdl.tpad.on) {
             if (sdl.tpad.active) {
 				if (sdl.tpad.x!=mx) sdl.tpad.moved=true;
-				if (sdl.tpad.y!=my) sdl.tpad.moved=true;                
+				if (sdl.tpad.y!=my) sdl.tpad.moved=true;
 				Mouse_MoveCursor(float((mx-sdl.tpad.x)*float(sdl.mouse.sensitivity))/100, float((my-sdl.tpad.y)*float(sdl.mouse.sensitivity))/100);
-				sdl.tpad.x=mx; sdl.tpad.y=my;                
-				}        
+				sdl.tpad.x=mx; sdl.tpad.y=my;
+				}
         return;
-        }	
+        }
 
 }
 
@@ -910,9 +917,9 @@ if (!sdl.window.rotateright) {
           sdl.tpad.moved=false;
 		  sdl.mouse.needticks=true;
 		  sdl.mouse.delayticks=0;
-          }    
+          }
           return;
-     } 
+     }
 
 	if (sdl.mouse.noclick) return;
 
@@ -929,21 +936,21 @@ if (!sdl.window.rotateright) {
 		}
 		break;
 	case SDL_RELEASED:
- 
+
 		if (sdl.tpad.on) {
-                  if (sdl.tpad.active) 
+                  if (sdl.tpad.active)
 				  if (!sdl.tpad.moved) {
-				     if (sdl.tpad.rightclickdelay)	
+				     if (sdl.tpad.rightclickdelay)
 					if (sdl.mouse.delayticks>sdl.tpad.rightclickdelay) sdl.mouse.right=true; else sdl.mouse.right=false;
 					    if (!sdl.mouse.right) Mouse_ButtonPressed(0); else Mouse_ButtonPressed(1);
 						sdl.tpad.releasedelay=sdl.tpad.clickms;
-                      }                
-                sdl.tpad.active=false;             
+                      }
+                sdl.tpad.active=false;
 				sdl.mouse.needticks=false;
 				sdl.mouse.delayticks=0;
                 return;
                 }
-                
+
         if (sdl.mouse.noclick) return;
 
 		switch (button->button) {
@@ -1008,7 +1015,10 @@ void GFX_Events() {
 			HandleMouseButton(&event.button);
 			break;
 		case SDL_QUIT:
-			throw(0);
+            // FIXME
+            printf("bad modification!!!");
+            exit(1);
+			// throw(0);
 			break;
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
@@ -1127,6 +1137,7 @@ static void printconfiglocation() {
 }
 
 
+#if 0
 //extern void UI_Init(void);
 #undef main
 int main(int argc, char* argv[]) {
@@ -1267,3 +1278,5 @@ getcwd(mypath,MAX_PATH);
 	SDL_Quit();//Let's hope sdl will quit as well when it catches an exception
 	return 0;
 };
+
+#endif

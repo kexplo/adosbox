@@ -35,6 +35,8 @@ LOCAL_CFLAGS := $(foreach D, $(CG_SUBDIRS), -I$(CG_SRCDIR)/$(D)) \
 				-I$(LOCAL_PATH)/../stlport/stlport \
 				-I$(LOCAL_PATH)/include \
 				-I$(LOCAL_PATH) \
+				-I$(SYSROOT)/usr/include
+
 
 #Change C++ file extension as appropriate
 LOCAL_CPP_EXTENSION := .cpp

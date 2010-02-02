@@ -1263,7 +1263,7 @@ public:
 		const SpecialChar *special = NULL);
 
 	virtual ~BitmapFont();
-	
+
 	/// Retrieve total height of font in pixels.
 	virtual int getHeight() const { return height; };
 
@@ -1714,7 +1714,7 @@ public:
 			last = p;
 			p = p->getParent();
 		}
-		dynamic_cast<ToplevelWindow *>(last2)->addCloseHandler(this);
+		static_cast<ToplevelWindow *>(last2)->addCloseHandler(this);
 	}
 
 	~TransientWindow() {
@@ -1725,7 +1725,7 @@ public:
 			last = p;
 			p = p->getParent();
 		}
-		dynamic_cast<ToplevelWindow *>(last2)->removeCloseHandler(this);
+		static_cast<ToplevelWindow *>(last2)->removeCloseHandler(this);
 	 }
 
 	virtual void move(int x, int y) { relx = x; rely = y;
@@ -2131,8 +2131,8 @@ protected:
 	/// Execute handlers.
 	virtual void actionExecuted(ActionEventSource *src, const String &arg) {
 		for (std::list<Window *>::iterator i = children.begin(); i != children.end(); ++i) {
-			Radiobox *r = dynamic_cast<Radiobox*>(*i);
-			if (r != NULL && src != dynamic_cast<ActionEventSource*>(r)) r->setChecked(false);
+			Radiobox *r = static_cast<Radiobox*>(*i);
+			if (r != NULL && src != static_cast<ActionEventSource*>(r)) r->setChecked(false);
 		}
 		executeAction(src->getName());
 	}

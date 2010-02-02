@@ -243,7 +243,12 @@ public: BadConversion(const std::string& s) : std::runtime_error(s) { }
 template<typename T> inline std::string stringify(const T& x, std::ios_base& ( *pf )(std::ios_base&) = NULL) {
 	std::ostringstream o;
 	if (pf) o << pf;
-	if (!(o << x)) throw BadConversion(std::string("stringify(") + typeid(x).name() + ")");
+    // FIXME: Gerald
+	// if (!(o << x)) throw BadConversion(std::string("stringify(") + typeid(x).name() + ")");
+	if (!(o << x)) {
+        printf("bad modification!!!");
+        //throw BadConversion(std::string("stringify(") + typeid(x).name() + ")");
+    }
 	return o.str();
 }
 
@@ -251,7 +256,11 @@ template<typename T> inline void convert(const std::string& s, T& x, bool failIf
 	std::istringstream i(s);
 	if (pf) i >> pf;
 	char c;
-	if (!(i >> x) || (failIfLeftoverChars && i.get(c))) throw BadConversion(s);
+    // FIXME: Gerald
+	// if (!(i >> x) || (failIfLeftoverChars && i.get(c))) throw BadConversion(s);
+	if (!(i >> x) || (failIfLeftoverChars && i.get(c))) {
+        printf("bad modification!!!");
+    }
 }
 
 /*****************************************************************************************************************************************/
@@ -407,11 +416,11 @@ public:
 		int i = 0;
 		Property *prop;
 		while ((prop = section->Get_prop(i))) {
-			Prop_bool   *pbool   = dynamic_cast<Prop_bool*>(prop);
-			Prop_int    *pint    = dynamic_cast<Prop_int*>(prop);
-			Prop_double  *pdouble  = dynamic_cast<Prop_double*>(prop);
-			Prop_hex    *phex    = dynamic_cast<Prop_hex*>(prop);
-			Prop_string *pstring = dynamic_cast<Prop_string*>(prop);
+			Prop_bool   *pbool   = static_cast<Prop_bool*>(prop);
+			Prop_int    *pint    = static_cast<Prop_int*>(prop);
+			Prop_double  *pdouble  = static_cast<Prop_double*>(prop);
+			Prop_hex    *phex    = static_cast<Prop_hex*>(prop);
+			Prop_string *pstring = static_cast<Prop_string*>(prop);
 
 			PropertyEditor *p;
 			if (pbool) p = new PropertyEditorBool(this, 5+250*(i/6), 40+(i%6)*30, section, prop);
@@ -465,7 +474,7 @@ public:
 			}
 			content->setText(lines);
 		} else if (arg == "Execute Now") {
-			UI_RunCommands(dynamic_cast<GUI::ScreenSDL*>(getScreen()), content->getText());
+			UI_RunCommands(static_cast<GUI::ScreenSDL*>(getScreen()), content->getText());
 		} else ToplevelWindow::actionExecuted(b, arg);
 	}
 };
@@ -560,9 +569,9 @@ public:
 		if (arg == "Close" || arg == "Cancel") {
 			running = false;
 		} else if (arg == "Keyboard") {
-			UI_Shutdown(dynamic_cast<GUI::ScreenSDL*>(getScreen()));
+			UI_Shutdown(static_cast<GUI::ScreenSDL*>(getScreen()));
 			MAPPER_Run(false);
-			UI_Startup(dynamic_cast<GUI::ScreenSDL*>(getScreen()));
+			UI_Startup(static_cast<GUI::ScreenSDL*>(getScreen()));
 		} else if (sname == "autoexec") {
 			Section_line *section = static_cast<Section_line *>(control->GetSection((const char *)sname));
 			new AutoexecEditor(getScreen(), 50, 30, section);

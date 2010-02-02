@@ -36,9 +36,9 @@ void Value::destroy() throw(){
 	if (type == V_STRING) delete _string;
 }
 
-Value& Value::copy(Value const& in) throw(WrongType) {
+Value& Value::copy(Value const& in) {
 	if (this != &in) { //Selfassigment!
-		if(type != V_NONE && type != in.type) throw WrongType();
+		if(type != V_NONE && type != in.type) {printf("WrongType();"); exit(1);}
 		destroy();
 		plaincopy(in);
 	}
@@ -54,28 +54,28 @@ void Value::plaincopy(Value const& in) throw(){
 	if(type == V_STRING) _string = new string(*in._string);
 }
 
-Value::operator bool () const throw(WrongType) {
-	if(type != V_BOOL) throw WrongType();
+Value::operator bool () const  {
+	if(type != V_BOOL) {printf("WrongType();"); exit(1);}
 	return _bool;
 }
 
-Value::operator Hex () const throw(WrongType) {
-	if(type != V_HEX) throw WrongType();
+Value::operator Hex () const  {
+	if(type != V_HEX) {printf("WrongType();"); exit(1);}
 	return _hex;
 }
 
-Value::operator int () const throw(WrongType) {
-	if(type != V_INT) throw WrongType();
+Value::operator int () const  {
+	if(type != V_INT) {printf("WrongType();"); exit(1);}
 	return _int;
 }
 
-Value::operator double () const throw(WrongType) {
-	if(type != V_DOUBLE) throw WrongType();
+Value::operator double () const  {
+	if(type != V_DOUBLE) {printf("WrongType();"); exit(1);}
 	return _double;
 }
 
-Value::operator char const* () const throw(WrongType) {
-	if(type != V_STRING) throw WrongType();
+Value::operator char const* () const  {
+	if(type != V_STRING) {printf("WrongType();"); exit(1);}
 	return _string->c_str();
 }
 
@@ -83,7 +83,7 @@ bool Value::operator==(Value const& other) {
 	if(this == &other) return true;
 	if(type != other.type) return false;
 	switch(type){
-		case V_BOOL: 
+		case V_BOOL:
 			if(_bool == other._bool) return true;
 			break;
 		case V_INT:
@@ -104,13 +104,13 @@ bool Value::operator==(Value const& other) {
 	}
 	return false;
 }
-void Value::SetValue(string const& in,Etype _type) throw(WrongType) {
-	/* Throw exception if the current type isn't the wanted type 
+void Value::SetValue(string const& in,Etype _type)  {
+	/* Throw exception if the current type isn't the wanted type
 	 * Unless the wanted type is current.
 	 */
-	if(_type == V_CURRENT && type == V_NONE) throw WrongType();
-	if(_type != V_CURRENT) { 
-		if(type != V_NONE && type != _type) throw WrongType();
+	if(_type == V_CURRENT && type == V_NONE) {printf("WrongType();"); exit(1);}
+	if(_type != V_CURRENT) {
+		if(type != V_NONE && type != _type) {printf("WrongType();"); exit(1);}
 		type = _type;
 	}
 	switch(type){
@@ -134,7 +134,7 @@ void Value::SetValue(string const& in,Etype _type) throw(WrongType) {
 		case V_CURRENT:
 		default:
 			/* Shouldn't happen!/Unhandled */
-			throw WrongType();
+			{printf("WrongType();"); exit(1);}
 			break;
 	}
 }
@@ -168,7 +168,7 @@ void Value::set_bool(string const &in) {
 	lowcase(result);
 	/* valid false entries: 0 ,d*, f*, off  everything else gets true */
 	if( !result.size() ) return;
-	if(result[0] == '0' || result[0] == 'd' || result[0] == 'f' || result == "off") 
+	if(result[0] == '0' || result[0] == 'd' || result[0] == 'f' || result == "off")
 		_bool = false;
 }
 
@@ -247,7 +247,7 @@ void Prop_double::SetValue(std::string const& input){
 	SetVal(val,false,true);
 }
 
-//void Property::SetValue(char* input){ 
+//void Property::SetValue(char* input){
 //	value.SetValue(input, Value::V_CURRENT);
 //}
 void Prop_int::SetValue(std::string const& input){;
@@ -258,7 +258,7 @@ void Prop_int::SetValue(std::string const& input){;
 void Prop_string::SetValue(std::string const& input){
 	//Special version for lowcase stuff
 	std::string temp(input);
-	//suggested values always case insensitive. 
+	//suggested values always case insensitive.
 	//If there are none then it can be paths and such which are case sensitive
 	if(!suggested_values.empty()) lowcase(temp);
 	Value val(temp,Value::V_STRING);
@@ -303,7 +303,7 @@ void Prop_path::SetValue(std::string const& input){
 	if( workcopy.size() > 1 && workcopy[0] == '/' ) realpath = workcopy;
 #endif
 }
-	
+
 void Prop_bool::SetValue(std::string const& input){
 	value.SetValue(input,Value::V_BOOL);
 }
@@ -328,7 +328,7 @@ void Prop_multival::make_default_value(){
 	SetVal(val,false,true);
 }
 
-   
+
 
 //TODO checkvalue stuff
 void Prop_multival_remain::SetValue(std::string const& input) {
@@ -340,10 +340,10 @@ void Prop_multival_remain::SetValue(std::string const& input) {
 	Property *p = section->Get_prop(0);
 	//No properties in this section. do nothing
 	if(!p) return;
-	
+
 	while( (section->Get_prop(number_of_properties)) )
 		number_of_properties++;
-	
+
 	string::size_type loc = string::npos;
 	while( (p = section->Get_prop(i++)) ) {
 		//trim leading seperators
@@ -351,9 +351,9 @@ void Prop_multival_remain::SetValue(std::string const& input) {
 		if(loc != string::npos) local.erase(0,loc);
 		loc = local.find_first_of(seperator);
 		string in = "";//default value
-		/* when i == number_of_properties add the total line. (makes more then 
+		/* when i == number_of_properties add the total line. (makes more then
 		 * one string argument possible for parameters of cpu) */
-		if(loc != string::npos && i < number_of_properties) { //seperator found 
+		if(loc != string::npos && i < number_of_properties) { //seperator found
 			in = local.substr(0,loc);
 			local.erase(0,loc+1);
 		} else if(local.size()) { //last argument or last property
@@ -408,7 +408,7 @@ void Prop_multival::SetValue(std::string const& input) {
 const std::vector<Value>& Property::GetValues() const {
 	return suggested_values;
 }
-const std::vector<Value>& Prop_multival::GetValues() const 
+const std::vector<Value>& Prop_multival::GetValues() const
 {
 	Property *p = section->Get_prop(0);
 	//No properties in this section. do nothing
@@ -505,7 +505,7 @@ double Section_prop::Get_double(string const& _propname) const {
 Prop_path* Section_prop::Get_path(string const& _propname) const {
 	for(const_it tel=properties.begin();tel!=properties.end();tel++){
 		if((*tel)->propname==_propname){
-			Prop_path* val = dynamic_cast<Prop_path*>((*tel));
+			Prop_path* val = static_cast<Prop_path*>((*tel));
 			if(val) return val; else return NULL;
 		}
 	}
@@ -515,7 +515,7 @@ Prop_path* Section_prop::Get_path(string const& _propname) const {
 Prop_multival* Section_prop::Get_multival(string const& _propname) const {
 	for(const_it tel=properties.begin();tel!=properties.end();tel++){
 		if((*tel)->propname==_propname){
-			Prop_multival* val = dynamic_cast<Prop_multival*>((*tel));
+			Prop_multival* val = static_cast<Prop_multival*>((*tel));
 			if(val) return val; else return NULL;
 		}
 	}
@@ -525,7 +525,7 @@ Prop_multival* Section_prop::Get_multival(string const& _propname) const {
 Prop_multival_remain* Section_prop::Get_multivalremain(string const& _propname) const {
 	for(const_it tel=properties.begin();tel!=properties.end();tel++){
 		if((*tel)->propname==_propname){
-			Prop_multival_remain* val = dynamic_cast<Prop_multival_remain*>((*tel));
+			Prop_multival_remain* val = static_cast<Prop_multival_remain*>((*tel));
 			if(val) return val; else return NULL;
 		}
 	}
@@ -596,7 +596,7 @@ string Section_prop::GetPropValue(string const& _property) const{
 	return NO_SUCH_PROPERTY;
 }
 
-void Section_line::HandleInputline(string const& line){ 
+void Section_line::HandleInputline(string const& line){
 	data+=line;
 	data+="\n";
 }
@@ -619,7 +619,7 @@ bool Config::PrintConfig(char const * const configfilename) const {
 	fprintf(outfile,"\n");
 	for (const_it tel=sectionlist.begin(); tel!=sectionlist.end(); tel++){
 		/* Print out the Section header */
-		Section_prop *sec = dynamic_cast<Section_prop *>(*tel);
+		Section_prop *sec = static_cast<Section_prop *>(*tel);
 		strcpy(temp,(*tel)->GetName());
 		lowcase(temp);
 		fprintf(outfile,"[%s]\n",temp);
@@ -634,13 +634,13 @@ bool Config::PrintConfig(char const * const configfilename) const {
 			i=0;
 			char prefix[80];
 			snprintf(prefix,80, "\n# %*s  ", maxwidth, "");
-			while ((p = sec->Get_prop(i++))) {		
+			while ((p = sec->Get_prop(i++))) {
 				std::string help = p->Get_help();
 				std::string::size_type pos = std::string::npos;
 				while ((pos = help.find("\n", pos+1)) != std::string::npos) {
 					help.replace(pos, 1, prefix);
 				}
-		     
+
 				fprintf(outfile, "# %*s: %s", maxwidth, p->propname.c_str(), help.c_str());
 
 				std::vector<Value> values = p->GetValues();
@@ -673,7 +673,7 @@ bool Config::PrintConfig(char const * const configfilename) const {
 				helpstr++;
 			}
 		}
-	   
+
 		fprintf(outfile,"\n");
 		(*tel)->PrintData(outfile);
 		fprintf(outfile,"\n");		/* Always an empty line between sections */
@@ -681,7 +681,7 @@ bool Config::PrintConfig(char const * const configfilename) const {
 	fclose(outfile);
 	return true;
 }
-   
+
 
 Section_prop* Config::AddSection_prop(char const * const _name,void (*_initfunction)(Section*),bool canchange){
 	Section_prop* blah = new Section_prop(_name);
@@ -708,7 +708,7 @@ Section_line* Config::AddSection_line(char const * const _name,void (*_initfunct
 
 
 void Config::Init() {
-	for (const_it tel=sectionlist.begin(); tel!=sectionlist.end(); tel++){ 
+	for (const_it tel=sectionlist.begin(); tel!=sectionlist.end(); tel++){
 		(*tel)->ExecuteInit();
 	}
 }
@@ -787,7 +787,7 @@ bool Config::ParseConfigFile(char const * const configfilename){
 	Section* currentsection = NULL;
 	Section* testsec = NULL;
 	while (getline(in,gegevens)) {
-		
+
 		/* strip leading/trailing whitespace */
 		trim(gegevens);
 		if(!gegevens.size()) continue;
@@ -811,12 +811,16 @@ bool Config::ParseConfigFile(char const * const configfilename){
 		}
 			break;
 		default:
+            //FIXME
+            if(currentsection) currentsection->HandleInputline(gegevens);
+#if 0
 			try {
 				if(currentsection) currentsection->HandleInputline(gegevens);
 			} catch(const char* message) {
 				message=0;
 				//EXIT with message
 			}
+#endif
 			break;
 		}
 	}
@@ -844,7 +848,7 @@ void Config::ParseEnv(char ** envp) {
 	}
 }
 
-void Config::SetStartUp(void (*_function)(void)) { 
+void Config::SetStartUp(void (*_function)(void)) {
 	_start_function=_function;
 }
 
@@ -932,7 +936,7 @@ bool CommandLine::FindStringRemain(char const * const name,std::string & value) 
 
 bool CommandLine::GetStringRemain(std::string & value) {
 	if(!cmds.size()) return false;
-		
+
 	cmd_it it=cmds.begin();value=(*it++);
 	for(;it != cmds.end();it++) {
 		value+=" ";
@@ -940,7 +944,7 @@ bool CommandLine::GetStringRemain(std::string & value) {
 	}
 	return true;
 }
-		
+
 
 unsigned int CommandLine::GetCount(void) {
 	return (unsigned int)cmds.size();
@@ -959,7 +963,7 @@ CommandLine::CommandLine(int argc,char const * const argv[]) {
 Bit16u CommandLine::Get_arglength() {
 	if(cmds.empty()) return 0;
 	Bit16u i=1;
-	for(cmd_it it=cmds.begin();it != cmds.end();it++) 
+	for(cmd_it it=cmds.begin();it != cmds.end();it++)
 		i+=(*it).size() + 1;
 	return --i;
 }
@@ -987,7 +991,7 @@ CommandLine::CommandLine(char const * const name,char const * const cmdline) {
 				cmds.push_back(str);
 				str.erase();
 			}
-		} 
+		}
 		else if (c=='"') { inquote=true;}
 		else if (c!=' ') { str+=c;inword=true;}
 		c_cmdline++;
