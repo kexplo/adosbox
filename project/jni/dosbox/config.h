@@ -76,7 +76,7 @@
 /* #undef C_MODEM */
 
 /* Define to 1 to use opengl display output support */
-/* #define C_OPENGL */
+#define C_OPENGL 0
 
 /* Define to 1 to enable SDL_sound support */
 #undef C_SDL_SOUND
