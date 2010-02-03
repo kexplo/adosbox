@@ -401,9 +401,11 @@ int ANDROID_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors)
 extern int main( int argc, char ** argv );
 static int SDLCALL MainThreadWrapper(void * dummy)
 {
+    freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
 	int argc = 1;
 	char * argv[] = { "sdl" };
 	chdir(SDL_CURDIR_PATH);
+    printf("main");
 	return main( argc, argv );
 	//return 1;
 };
