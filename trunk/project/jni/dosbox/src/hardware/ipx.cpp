@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: ipx.cpp,v 1.15 2008/07/26 14:49:38 qbix79 Exp $ */
+/* $Id: ipx.cpp,v 1.17 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 
@@ -951,7 +951,8 @@ public:
 						isIpxServer = true;
 						ConnectToServer("localhost");
 					} else {
-						WriteOut("IPX Tunneling Server failed to start\n");
+						WriteOut("IPX Tunneling Server failed to start.\n");
+						if(udpPort < 1024) WriteOut("Try a port number above 1024. See IPXNET HELP CONNECT on how to specify a port.\n");
 					}
 				} else {
 					WriteOut("IPX Tunneling Server already started\n");

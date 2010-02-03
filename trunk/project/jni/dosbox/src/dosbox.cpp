@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dosbox.cpp,v 1.146 2009/02/15 20:01:08 qbix79 Exp $ */
+/* $Id: dosbox.cpp,v 1.149 2009/05/20 18:07:06 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -107,9 +107,7 @@ void CDROM_Image_Init(Section*);
 void EMS_Init(Section*);
 void XMS_Init(Section*);
 
-/*
 void DOS_KeyboardLayout_Init(Section*);
-*/
 
 void AUTOEXEC_Init(Section*);
 void SHELL_Init(void);
@@ -126,11 +124,6 @@ static Bit32u ticksAdded;
 Bit32s ticksDone;
 Bit32u ticksScheduled;
 bool ticksLocked;
-
-Bits cpuLoadDisp = 0;
-Bits cyclesDisp = 0;
-Bitu showcounter;
-extern void GFX_SetTitle(Bit32s cycles,Bits frameskip,bool paused);
 
 static Bitu Normal_Loop(void) {
 	Bits ret;
@@ -175,8 +168,9 @@ increaseticks:
 			ticksAdded = ticksRemain;
 			if (CPU_CycleAutoAdjust && !CPU_SkipCycleAutoAdjust) {
 				if (ticksScheduled >= 250 || ticksDone >= 250 || (ticksAdded > 15 && ticksScheduled >= 5) ) {
-					/* ratio we are aiming for is around 99% usage*/
-					Bit32s ratio = (ticksScheduled * (CPU_CyclePercUsed*99*1024/100/100)) / ticksDone;
+					if(ticksDone < 1) ticksDone = 1; // Protect against div by zero
+					/* ratio we are aiming for is around 90% usage*/
+					Bit32s ratio = (ticksScheduled * (CPU_CyclePercUsed*90*1024/100/100)) / ticksDone;
 					Bit32s new_cmax = CPU_CycleMax;
 					Bit64s cproc = (Bit64s)CPU_CycleMax * (Bit64s)ticksScheduled;
 					if (cproc > 0) {
@@ -185,6 +179,10 @@ increaseticks:
 						double ratioremoved = (double) CPU_IODelayRemoved / (double) cproc;
 						if (ratioremoved < 1.0) {
 							ratio = (Bit32s)((double)ratio * (1 - ratioremoved));
+							/* Don't allow very high ratio which can cause us to lock as we don't scale down
+							 * for very low ratios. High ratio might result because of timing resolution */
+							if (ticksScheduled >= 250 && ticksDone < 10 && ratio > 20480) 
+								ratio = 20480;
 							Bit64s cmax_scaled = (Bit64s)CPU_CycleMax * (Bit64s)ratio;
 							if (ratio <= 1024) 
 								new_cmax = (Bit32s)(cmax_scaled / (Bit64s)1024);
@@ -220,9 +218,6 @@ increaseticks:
 					if (CPU_CycleMax < CPU_CYCLES_LOWER_LIMIT)
 						CPU_CycleMax = CPU_CYCLES_LOWER_LIMIT;
 				}
-			cyclesDisp=(cyclesDisp>>1)+(CPU_CycleMax>>1);
-			showcounter++;
-			if (showcounter>1500) {showcounter=0; GFX_SetTitle(cyclesDisp,-1,false);};
 			}
 		} else {
 			ticksAdded = 0;
@@ -322,7 +317,8 @@ void DOSBOX_Init(void) {
 	SDLNetInited = false;
 
 	// Some frequently used option sets
-	const char *rates[] = { "22050", "44100", "48000", "32000", "16000", "11025", "8000", 0 };
+	const char *rates[] = { "22050", "44100", "48000", "32000", "16000", "11025", "8000", "49716", 0 };
+	const char *oplrates[] = { "22050", "49716", "44100", "48000", "32000", "16000", "11025", "8000", 0 };
 	const char *ios[] = { "220", "240", "260", "280", "2a0", "2c0", "2e0", "300", 0 };
 	const char *irqssb[] = { "7", "5", "3", "9", "10", "11", "12", 0 };
 	const char *dmassb[] = { "1", "5", "0", "3", "6", "7", 0 };
@@ -346,7 +342,6 @@ void DOSBOX_Init(void) {
 
 	Pstring = secprop->Add_path("captures",Property::Changeable::Always,"capture");
 	Pstring->Set_help("Directory where things like wave, midi, screenshot get captured.");
-
 
 #if C_DEBUG	
 	LOG_StartUp();
@@ -378,26 +373,36 @@ void DOSBOX_Init(void) {
 	Pbool->Set_help("Do aspect correction, if your output method doesn't support scaling this can slow things down!.");
 
 	Pmulti = secprop->Add_multi("scaler",Property::Changeable::Always," ");
-	Pmulti->SetValue("qvga");
+	Pmulti->SetValue("normal2x");
 	Pmulti->Set_help("Scaler used to enlarge/enhance low resolution modes. If 'forced' is appended,the scaler will be used even if the result might not be desired.");
-	Pstring = Pmulti->GetSection()->Add_string("type",Property::Changeable::Always,"qvga");
+	Pstring = Pmulti->GetSection()->Add_string("type",Property::Changeable::Always,"normal2x");
 
 	const char *scalers[] = { 
-		"qvga", "vga",
+		"none", "normal2x", "normal3x",
+#if RENDER_USE_ADVANCED_SCALERS>2
+		"advmame2x", "advmame3x", "advinterp2x", "advinterp3x", "hq2x", "hq3x", "2xsai", "super2xsai", "supereagle",
+#endif
+#if RENDER_USE_ADVANCED_SCALERS>0
+		"tv2x", "tv3x", "rgb2x", "rgb3x", "scan2x", "scan3x",
+#endif
 		0 };
 	Pstring->Set_values(scalers);
 
+	const char* force[] = { "", "forced", 0 };
+	Pstring = Pmulti->GetSection()->Add_string("force",Property::Changeable::Always,"");
+	Pstring->Set_values(force);
+
 	secprop=control->AddSection_prop("cpu",&CPU_Init,true);//done
-	const char* cores[] = { "full",
+	const char* cores[] = { "auto",
 #if (C_DYNAMIC_X86) || (C_DYNREC)
 		"dynamic",
 #endif
-		"simple",0 };
-	Pstring = secprop->Add_string("core",Property::Changeable::WhenIdle,"full");
+		"normal", "simple",0 };
+	Pstring = secprop->Add_string("core",Property::Changeable::WhenIdle,"auto");
 	Pstring->Set_values(cores);
 	Pstring->Set_help("CPU Core used in emulation. auto will switch to dynamic if available and appropriate.");
 
-	const char* cputype_values[] = { "auto", "386", "386_slow", "486_slow", "pentium_slow", 0};
+	const char* cputype_values[] = { "auto", "386", "386_slow", "486_slow", "pentium_slow", "386_prefetch", 0};
 	Pstring = secprop->Add_string("cputype",Property::Changeable::Always,"auto");
 	Pstring->Set_values(cputype_values);
 	Pstring->Set_help("CPU Type used in emulation. auto is the fastest choice.");
@@ -405,14 +410,16 @@ void DOSBOX_Init(void) {
 
 	Pmulti_remain = secprop->Add_multiremain("cycles",Property::Changeable::Always," ");
 	Pmulti_remain->Set_help(
-		"Amount of instructions DOSBox tries to emulate each millisecond. Setting this value too high results in sound dropouts and lags. Cycles can be set in 2 ways:\n"
+		"Amount of instructions DOSBox tries to emulate each millisecond. Setting this value too high results in sound dropouts and lags. Cycles can be set in 3 ways:\n"
+		"  'auto'          tries to guess what a game needs.\n"
+		"                  It usually works, but can fail for certain games.\n"
 		"  'fixed #number' will set a fixed amount of cycles. This is what you usually need if 'auto' fails.\n"
 		"                  (Example: fixed 4000)\n"
 		"  'max'           will allocate as much cycles as your computer is able to handle\n");
 
-	const char* cyclest[] = { "fixed","max","%u",0 };
-	Pstring = Pmulti_remain->GetSection()->Add_string("type",Property::Changeable::Always,"max");
-	Pmulti_remain->SetValue("max");
+	const char* cyclest[] = { "auto","fixed","max","%u",0 };
+	Pstring = Pmulti_remain->GetSection()->Add_string("type",Property::Changeable::Always,"auto");
+	Pmulti_remain->SetValue("auto");
 	Pstring->Set_values(cyclest);
 
 	Pstring = Pmulti_remain->GetSection()->Add_string("parameters",Property::Changeable::Always,"");
@@ -438,7 +445,7 @@ void DOSBOX_Init(void) {
 
 	Pint = secprop->Add_int("rate",Property::Changeable::OnlyAtStart,22050);
 	Pint->Set_values(rates);
-	Pint->Set_help("Mixer sample rate, setting any devices higher than this will probably lower their sound quality.");
+	Pint->Set_help("Mixer sample rate, setting any device's rate higher than this will probably lower their sound quality.");
 
 	const char *blocksizes[] = {
 		"2048", "4096", "8192", "1024", "512", "256", 0};
@@ -450,7 +457,6 @@ void DOSBOX_Init(void) {
 	Pint->SetMinMax(0,100);
 	Pint->Set_help("How many milliseconds of data to keep on top of the blocksize.");
 	
-#if 0
 	secprop=control->AddSection_prop("midi",&MIDI_Init,true);//done
 	secprop->AddInitFunction(&MPU401_Init,true);//done
 	
@@ -467,7 +473,6 @@ void DOSBOX_Init(void) {
 
 	Pstring = secprop->Add_string("midiconfig",Property::Changeable::WhenIdle,"");
 	Pstring->Set_help("Special configuration options for the device driver. This is usually the id of the device you want to use. See README for details.");
-#endif
 
 #if C_DEBUG
 	secprop=control->AddSection_prop("debug",&DEBUG_Init);
@@ -504,16 +509,15 @@ void DOSBOX_Init(void) {
 	Pstring->Set_values(oplmodes);
 	Pstring->Set_help("Type of OPL emulation. On 'auto' the mode is determined by sblaster type. All OPL modes are Adlib-compatible, except for 'cms'.");
 
-	const char* oplemus[]={ "auto", 0};
-	Pstring = secprop->Add_string("oplemu",Property::Changeable::WhenIdle,"auto");
+	const char* oplemus[]={ "default", "compat", "fast", "old", 0};
+	Pstring = secprop->Add_string("oplemu",Property::Changeable::WhenIdle,"default");
 	Pstring->Set_values(oplemus);
-	Pstring->Set_help("Provider for the OPL emulation. On 'auto' dosbox will use the best emulation.");
+	Pstring->Set_help("Provider for the OPL emulation. compat or old might provide better quality (see oplrate as well).");
 
 	Pint = secprop->Add_int("oplrate",Property::Changeable::WhenIdle,22050);
-	Pint->Set_values(rates);
-	Pint->Set_help("Sample rate of OPL music emulation.");
+	Pint->Set_values(oplrates);
+	Pint->Set_help("Sample rate of OPL music emulation. Use 49716 for highest quality (set the mixer rate accordingly).");
 
-#if 0
 
 	secprop=control->AddSection_prop("gus",&GUS_Init,true); //done
 	Pbool = secprop->Add_bool("gus",Property::Changeable::WhenIdle,false); 	
@@ -541,8 +545,6 @@ void DOSBOX_Init(void) {
 		"there should be a MIDI directory that contains\n"
 		"the patch files for GUS playback. Patch sets used\n"
 		"with Timidity should work fine.");
-
-#endif
 
 	secprop = control->AddSection_prop("speaker",&PCSPEAKER_Init,true);//done
 	Pbool = secprop->Add_bool("pcspeaker",Property::Changeable::WhenIdle,true);
@@ -595,7 +597,6 @@ void DOSBOX_Init(void) {
 	Pbool = secprop->Add_bool("buttonwrap",Property::Changeable::WhenIdle,true);
 	Pbool->Set_help("enable button wrapping at the number of emulated buttons.");
 
-/*
 	secprop=control->AddSection_prop("serial",&SERIAL_Init,true);
 	const char* serials[] = { "dummy", "disabled", "modem", "nullmodem",
 	                          "directserial",0 };
@@ -637,7 +638,7 @@ void DOSBOX_Init(void) {
 	Pstring->Set_values(serials);
 	Pstring = Pmulti_remain->GetSection()->Add_string("parameters",Property::Changeable::WhenIdle,"");
 	Pmulti_remain->Set_help("see serial1");
-*/
+
 
 	/* All the DOS Related stuff, which will eventually start up in the shell */
 	secprop=control->AddSection_prop("dos",&DOS_Init,false);//done

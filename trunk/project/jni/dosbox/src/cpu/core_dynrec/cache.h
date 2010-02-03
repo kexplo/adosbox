@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,41 +16,6 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#define WIN32
-#include "windows.h"
-
-void * wm_malloc(long unsigned int size)
-{
-	HANDLE H;
-	void *Ptr;
-	if (size<64*1024)
-	{
-	void * Ptr = malloc (size+4);
-	*((HANDLE*)Ptr)=0;
-	return 4+(char*)Ptr;
-	}
-	H=CreateFileMapping((HANDLE)INVALID_HANDLE_VALUE, 0, PAGE_READWRITE, 0, size+4, 0);
-	Ptr=MapViewOfFile(H,FILE_MAP_ALL_ACCESS,0,0,0);
-	LOG_MSG("MapView: %x,%d", Ptr,size);	
-	*((HANDLE*)Ptr)=H;
-	return 4+(char*)Ptr;
-}
-
-void wm_free(void* addr)
-{
-        if (addr==0) return;
-	HANDLE H=*(HANDLE*)((char *)addr-4);
-	if (H==0)
-	{
-	free((char*)addr-4);
-	return;
-	}
-	LOG_MSG("UnmapView");	
-	UnmapViewOfFile((char *)addr-4);
-	CloseHandle(H);
-}
-
-#undef WIN32
 
 class CodePageHandlerDynRec;	// forward
 
@@ -607,8 +572,8 @@ static void cache_init(bool enable) {
 		cache_initialized = true;
 		if (cache_blocks == NULL) {
 			// allocate the cache blocks memory
-			cache_blocks=(CacheBlockDynRec*)wm_malloc(CACHE_BLOCKS*sizeof(CacheBlockDynRec));
-			if(!cache_blocks) E_Exit("Allocating cache_blocks has failed: need %d", CACHE_BLOCKS*sizeof(CacheBlockDynRec));
+			cache_blocks=(CacheBlockDynRec*)malloc(CACHE_BLOCKS*sizeof(CacheBlockDynRec));
+			if(!cache_blocks) E_Exit("Allocating cache_blocks has failed");
 			memset(cache_blocks,0,sizeof(CacheBlockDynRec)*CACHE_BLOCKS);
 			cache.block.free=&cache_blocks[0];
 			// initialize the cache blocks
@@ -626,9 +591,9 @@ static void cache_init(bool enable) {
 			if (!cache_code_start_ptr)
 				cache_code_start_ptr=(Bit8u*)malloc(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP);
 #else
-			cache_code_start_ptr=(Bit8u*)wm_malloc(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP);
+			cache_code_start_ptr=(Bit8u*)malloc(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP);
 #endif
-			if(!cache_code_start_ptr) E_Exit("Allocating dynamic cache failed: need %d",(CACHE_TOTAL+CACHE_MAXSIZE+PAGESIZE_TEMP-1+PAGESIZE_TEMP));
+			if(!cache_code_start_ptr) E_Exit("Allocating dynamic cache failed");
 
 			// align the cache at a page boundary
 			cache_code=(Bit8u*)(((long)cache_code_start_ptr + PAGESIZE_TEMP-1) & ~(PAGESIZE_TEMP-1)); //MEM LEAK. store old pointer if you want to free it.
@@ -675,12 +640,6 @@ static void cache_init(bool enable) {
 }
 
 static void cache_close(void) {
-	wm_free(cache_blocks);
-	wm_free(cache_code_start_ptr);
-	/* n0p - ugly hack */
-	cache_blocks=(CacheBlockDynRec*)malloc(1024);
-	cache_code_start_ptr=(Bit8u*)malloc(1024);
-
 /*	for (;;) {
 		if (cache.used_pages) {
 			CodePageHandler * cpage=cache.used_pages;

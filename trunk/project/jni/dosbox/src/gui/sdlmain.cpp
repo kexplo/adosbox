@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: sdlmain.cpp,v 1.150 2009/02/25 19:58:11 c2woody Exp $ */
+/* $Id: sdlmain.cpp,v 1.153 2009/05/25 16:29:36 qbix79 Exp $ */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -29,10 +29,11 @@
 #include <stdarg.h>
 #include <sys/types.h>
 #ifdef WIN32
-//#include <signal.h>
+#include <signal.h>
 #include <process.h>
 #endif
 
+#include "cross.h"
 #include "SDL.h"
 
 #include "dosbox.h"
@@ -50,10 +51,48 @@
 #include "cross.h"
 #include "control.h"
 
-#include "render.h"
-extern Render_t render;
-
 //#define DISABLE_JOYSTICK
+
+#if C_OPENGL
+#include "SDL_opengl.h"
+
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+#ifndef APIENTRYP
+#define APIENTRYP APIENTRY *
+#endif
+
+#ifdef __WIN32__
+#define NVIDIA_PixelDataRange 1
+
+#ifndef WGL_NV_allocate_memory
+#define WGL_NV_allocate_memory 1
+typedef void * (APIENTRY * PFNWGLALLOCATEMEMORYNVPROC) (int size, float readfreq, float writefreq, float priority);
+typedef void (APIENTRY * PFNWGLFREEMEMORYNVPROC) (void *pointer);
+#endif
+
+PFNWGLALLOCATEMEMORYNVPROC db_glAllocateMemoryNV = NULL;
+PFNWGLFREEMEMORYNVPROC db_glFreeMemoryNV = NULL;
+
+#else
+
+#endif
+
+#if defined(NVIDIA_PixelDataRange)
+
+#ifndef GL_NV_pixel_data_range
+#define GL_NV_pixel_data_range 1
+#define GL_WRITE_PIXEL_DATA_RANGE_NV      0x8878
+typedef void (APIENTRYP PFNGLPIXELDATARANGENVPROC) (GLenum target, GLsizei length, GLvoid *pointer);
+typedef void (APIENTRYP PFNGLFLUSHPIXELDATARANGENVPROC) (GLenum target);
+#endif
+
+PFNGLPIXELDATARANGENVPROC glPixelDataRangeNV = NULL;
+
+#endif
+
+#endif //C_OPENGL
 
 #if !(ENVIRON_INCLUDED)
 extern char** environ;
@@ -63,12 +102,17 @@ extern char** environ;
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <windows.h>
+#if (HAVE_DDRAW_H)
+#include <ddraw.h>
+struct private_hwdata {
+	LPDIRECTDRAWSURFACE3 dd_surface;
+	LPDIRECTDRAWSURFACE3 dd_writebuf;
+};
+#endif
 
-// FIXME
-// #include <windows.h>
-
-#define STDOUT_FILE	"stdout.txt"
-#define STDERR_FILE	"stderr.txt"
+#define STDOUT_FILE	TEXT("stdout.txt")
+#define STDERR_FILE	TEXT("stderr.txt")
 #define DEFAULT_CONFIG_FILE "/dosbox.conf"
 #elif defined(MACOSX)
 #define DEFAULT_CONFIG_FILE "/Library/Preferences/DOSBox Preferences"
@@ -76,11 +120,15 @@ extern char** environ;
 #define DEFAULT_CONFIG_FILE "/.dosboxrc"
 #endif
 
-#ifdef UNDER_CE
-#undef  DEFAULT_CONFIG_FILE
-#define STDOUT_FILE	"stdout.txt"
-#define STDERR_FILE	"stderr.txt"
-#define DEFAULT_CONFIG_FILE "dosbox.conf"
+#if C_SET_PRIORITY
+#include <sys/resource.h>
+#define PRIO_TOTAL (PRIO_MAX-PRIO_MIN)
+#endif
+
+#ifdef OS2
+#define INCL_DOS
+#define INCL_WIN
+#include <os2.h>
 #endif
 
 enum SCREEN_TYPES	{
@@ -90,464 +138,113 @@ enum SCREEN_TYPES	{
 	SCREEN_OPENGL
 };
 
-#include "sdlmain.h"
+enum PRIORITY_LEVELS {
+	PRIORITY_LEVEL_PAUSE,
+	PRIORITY_LEVEL_LOWEST,
+	PRIORITY_LEVEL_LOWER,
+	PRIORITY_LEVEL_NORMAL,
+	PRIORITY_LEVEL_HIGHER,
+	PRIORITY_LEVEL_HIGHEST
+};
 
-SDL_Block sdl;
 
-extern void Mouse_SetCursor(float x, float y, float xp, float yp);
-extern void Mouse_MoveCursor(float x, float y);
-
-char toolbar1[80] = "toolbar.dbk";
-char toolbar2[80] = "game.dbk";
-char toolbar3[80] = "set.dbk";
-char mypath[260]="\0";
-char fullname[260]="\0";
-
-void GFX_SetTitle(Bit32s cycles,Bits frameskip,bool paused);
-void WM_Update();
-void WM_LoadToolbar(char* tbname, int tbnum);
-void WM_UpdateToolbar();
-void WM_PreInit();
-void WM_Init();
-
-#ifndef UNDER_CE
-#define _GAPIBeginDraw() sdl.surface->pixels
-#define _GAPIEndDraw() SDL_Flip(sdl.surface)
-#else
-#define _GAPIBeginDraw() _GetGAPIBuffer()
-#define _GAPIEndDraw() _FreeGAPIBuffer()
+struct SDL_Block {
+	bool inited;
+	bool active;							//If this isn't set don't draw
+	bool updating;
+	struct {
+		Bit32u width;
+		Bit32u height;
+		Bit32u bpp;
+		Bitu flags;
+		double scalex,scaley;
+		GFX_CallBack_t callback;
+	} draw;
+	bool wait_on_error;
+	struct {
+		struct {
+			Bit16u width, height;
+			bool fixed;
+		} full;
+		struct {
+			Bit16u width, height;
+		} window;
+		Bit8u bpp;
+		bool fullscreen;
+		bool doublebuf;
+		SCREEN_TYPES type;
+		SCREEN_TYPES want_type;
+	} desktop;
+#if C_OPENGL
+	struct {
+		Bitu pitch;
+		void * framebuf;
+		GLuint texture;
+		GLuint displaylist;
+		GLint max_texsize;
+		bool bilinear;
+		bool packed_pixel;
+		bool paletted_texture;
+#if defined(NVIDIA_PixelDataRange)
+		bool pixel_data_range;
 #endif
+	} opengl;
+#endif
+	struct {
+		SDL_Surface * surface;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+		RECT rect;
+#endif
+	} blit;
+	struct {
+		PRIORITY_LEVELS focus;
+		PRIORITY_LEVELS nofocus;
+	} priority;
+	SDL_Rect clip;
+	SDL_Surface * surface;
+	SDL_Overlay * overlay;
+	SDL_cond *cond;
+	struct {
+		bool autolock;
+		bool autoenable;
+		bool requestlock;
+		bool locked;
+		Bitu sensitivity;
+	} mouse;
+	SDL_Rect updateRects[1024];
+	Bitu num_joysticks;
+#if defined (WIN32)
+	bool using_windib;
+#endif
+	// state of alt-keys for certain special handlings
+	Bit8u laltstate;
+	Bit8u raltstate;
+};
 
-Bit16u * GAPI_Buffer;
+static SDL_Block sdl;
 
 extern const char* RunningProgram;
 extern bool CPU_CycleAutoAdjust;
 //Globals for keyboard initialisation
 bool startup_state_numlock=false;
 bool startup_state_capslock=false;
-
-#ifdef UNDER_CE
-char cwd[MAX_PATH+1] = "";
-char *getcwd(char *buffer, int maxlen)
-{
-	TCHAR fileUnc[MAX_PATH+1];
-	char* plast;
-
-	if(cwd[0] == 0)
-	{
-		GetModuleFileName(NULL, fileUnc, MAX_PATH);
-		WideCharToMultiByte(CP_ACP, 0, fileUnc, -1, cwd, MAX_PATH, NULL, NULL);
-		plast = strrchr(cwd, '\\');
-		if(plast)
-			*plast = 0;
-		/* Special trick to keep start menu clean... */
-		if(stricmp(cwd, "\\windows\\start menu") == 0)
-			strcpy(cwd, "\\Apps");
-	}
-	if(buffer)
-		strncpy(buffer, cwd, maxlen);
-	return cwd;
-}
-#endif
-
-static void WM_RenderXor(unsigned char code)
-{
-int x,y;
-
-for (x=0; x<320; x++)
-    for (y=0; y<sdl.toolbar.height; y++)
-        if (sdl.toolbar.keycode[x+y*320]==code)
-            sdl.toolbar.gfx[(y*320+x)]^=0xFF;
-WM_UpdateToolbar();
-}
-
-void CPU_CycleIncrease(bool);
-void CPU_CycleDecrease(bool);
-void IncreaseFrameSkip(bool);
-void DecreaseFrameSkip(bool);
-
-static void Mouse_Up(bool pressed)
-{
-   if (pressed)
-	sdl.dpad.y= -(float)(sdl.mouse.sensitivity)/100;
-   else
-	sdl.dpad.y=0;
-}
-
-static void Mouse_Down(bool pressed)
-{
-   if (pressed)
-	sdl.dpad.y= (float)(sdl.mouse.sensitivity)/100;
-   else
-	sdl.dpad.y=0;
-}
-
-static void Mouse_Left(bool pressed)
-{
-   if (pressed)
-	sdl.dpad.x= -(float)(sdl.mouse.sensitivity)/100;
-   else
-	sdl.dpad.x=0;
-}
-
-static void Mouse_Right(bool pressed)
-{
-   if (pressed)
-	sdl.dpad.x= (float)(sdl.mouse.sensitivity)/100;
-   else
-	sdl.dpad.x=0;
-}
-
-static void MouseButton_Left(bool pressed)
-{
-   if (pressed)
-   	Mouse_ButtonPressed(0);
-   else
-   	Mouse_ButtonReleased(0);
-}
-
-static void MouseButton_Right(bool pressed)
-{
-   if (pressed)
-   	Mouse_ButtonPressed(1);
-   else
-   	Mouse_ButtonReleased(1);
-}
-
-static void MouseButton_Middle(bool pressed)
-{
-   if (pressed)
-	Mouse_ButtonPressed(2);
-   else
-	Mouse_ButtonReleased(2);
-}
-
-static void Force_Toolbar(bool pressed)
-{
-   if (pressed) {
-        sdl.toolbar.forced=!sdl.toolbar.forced;
-	WM_Init();
-   }
-}
-
-void WM_HandleToolbar(int x, int y, bool isdown)
-{
-
-        if ((sdl.window.height-sdl.window.toolbarstart)<2) return;
-
-        int B=x;
-        int L=y-(sdl.window.height-sdl.toolbar.vislines);
-
-        //Option to hide toolbar?
-        if(B<0 || B>320 || L<0 || L>sdl.toolbar.vislines)
-        return;
-
-        char code=sdl.toolbar.keycode[B+(L+sdl.toolbar.scrollpos)*320];
-        if (code!=KBD_SC) sdl.toolbar.scrollactive=false;
-        if (code==0) return;
-        bool LockKey=(code&KBD_LOCKKEY);
-        code=code&0x7F;
-        char ascii;
-        //Here need caps, shift, numlock aknowledgement...
-        if (isdown)
-        {
-        switch(code)
-         {
-            case KBD_capslock:   WM_RenderXor(code); break;
-            case KBD_numlock:    WM_RenderXor(code); break;
-            case KBD_scrolllock: WM_RenderXor(code); break;
-         }
-        }
-        switch(code)
-        {
-            case KBD_CCI:
-                        WM_RenderXor(code);
-                        if (isdown) CPU_CycleIncrease(true);
-                        break;
-            case KBD_CCD:
-                        WM_RenderXor(code);
-                        if (isdown) CPU_CycleDecrease(true);
-                        break;
-            case KBD_IFS:
-                        WM_RenderXor(code);
-                        if (isdown) IncreaseFrameSkip(true);
-                        break;
-            case KBD_DFS:
-                        WM_RenderXor(code);
-                        if (isdown) DecreaseFrameSkip(true);
-                        break;
-            case KBD_EXIT:
-                        if (isdown) E_Exit("Exit button pressed");
-                        break;
-            case KBD_NT:
-                        if (isdown)
-                        {
-                        sdl.toolbar.current++;
-                        if (sdl.toolbar.current>2) sdl.toolbar.current=0;
-                        WM_Init();
-                        }
-                        break;
-            case KBD_PT:
-                        if (isdown)
-                        {
-                        sdl.toolbar.current--;
-                        if (sdl.toolbar.current<0) sdl.toolbar.current=2;
-                        WM_Init();
-                        }
-                        break;
-            case KBD_RMC:
-                        if (isdown) Mouse_ButtonPressed(1); else Mouse_ButtonReleased(1);
-                        break;
-            case KBD_LMC:
-                        if (isdown) Mouse_ButtonPressed(0); else Mouse_ButtonReleased(0);
-                        break;
-            case KBD_MMC:
-                        if (isdown) Mouse_ButtonPressed(2); else Mouse_ButtonReleased(2);
-                        break;
-            case KBD_MNC:
-                        if (isdown) {WM_RenderXor(code); sdl.mouse.noclick=!sdl.mouse.noclick;}
-                        break;
-
-            case KBD_SC:
-                        sdl.toolbar.oldscpos=L;
-                        sdl.toolbar.scrollactive=isdown;
-                        break;
-
-
-        };
-
-        if(code<KBD_LAST)
-        {
-                if(LockKey)
-                {
-                        if (isdown)
-                        {
-                            if(sdl.toolbar.pressed[code])
-                                KEYBOARD_AddKey((KBD_KEYS)code,false);
-                                else
-                                KEYBOARD_AddKey((KBD_KEYS)code,true);
-                                WM_RenderXor(code|0x80);
-                                sdl.toolbar.pressed[code]=!sdl.toolbar.pressed[code];
-
-                        }
-                } else
-                {
-                        if (isdown) KEYBOARD_AddKey((KBD_KEYS)code,true);
-                        else KEYBOARD_AddKey((KBD_KEYS)code,false);
-                }
-        }
-}
-
-static void WM_ClearToolbarArea()
-{
-bool Close;
-Bit16u * tempbuf;
-int i,j;
-
-  Close = false;
-  if (!GAPI_Buffer) {
-	GAPI_Buffer = (Bit16u*)_GAPIBeginDraw();
-	Close = true;
-  }
-
-  if (!sdl.window.rotateright) {
-  tempbuf = GAPI_Buffer + (319*240) + sdl.window.toolbarstart; //correct pointer to where upper-left corner should be
-  for (i=0; i<sdl.window.height-sdl.window.toolbarstart; i++) {
-	for (j=0; j<320; j++) {
-		tempbuf[0]=0;
-		tempbuf+=(-240);
-		}
-  	tempbuf+=(319*240+240+1);
-  	}
-  } else {
-  tempbuf = GAPI_Buffer + sdl.window.height - sdl.window.toolbarstart - 1; //correct pointer to where upper-left corner should be
-  for (i=0; i<sdl.window.height-sdl.window.toolbarstart; i++) {
-	for (j=0; j<320; j++) {
-		tempbuf[0]=0;
-		tempbuf+=(240);
-		}
-  	tempbuf=tempbuf-(320*240)-1;
-  	}
-  }
-  if (Close) {
-  	_GAPIEndDraw();
-  	GAPI_Buffer = 0;
-  }
-}
-
-
-static void WM_DrawToolbar()
-{
-Bit32u i,j,k;
-Bit16u tmp;
-Bit16u * tempbuf;
-Bit16u * tbbuf;
-int offset = 0;
-bool Close;
-
-  if ((sdl.window.height-sdl.window.toolbarstart)<2) return;
-
-  Close = false;
-  if (!GAPI_Buffer) {
-	GAPI_Buffer = (Bit16u*)_GAPIBeginDraw();
-	Close = true;
-  }
-
-  if (sdl.toolbar.transparent) offset = render.scale.height - sdl.window.toolbarstart;
-  if (offset < 0) offset=0;
-
-  k=(sdl.toolbar.scrollpos+offset);
-  k*=320;
-  tbbuf=(Bit16u*)sdl.toolbar.gfx;
-
-  if (!sdl.window.rotateright) {
-  tempbuf = GAPI_Buffer + (319*240) + (sdl.window.toolbarstart+offset); //correct pointer to where upper-left corner should be
-  for (i=0; i<(sdl.toolbar.vislines-offset); i++)
-  {
-	for (j=0; j<320; j++) {
-		tmp=tbbuf[k];
-		tempbuf[0]=tmp;
-		tempbuf+=(-240);
-		k++;
-	}
-  tempbuf+=(319*240+240+1);
-  }
-
-  } else {
-  tempbuf = GAPI_Buffer + sdl.window.height - (sdl.window.toolbarstart+offset) - 1; //correct pointer to where upper-left corner should be
-  for (i=0; i<(sdl.toolbar.vislines-offset); i++)
-  {
-	for (j=0; j<320; j++) {
-		tmp=tbbuf[k];
-		tempbuf[0]=tmp;
-		tempbuf+=(240);
-		k++;
-	}
-  tempbuf=tempbuf-(320*240)-1;
-  }
-  }
-  if (Close) {
-  	_GAPIEndDraw();
-  	GAPI_Buffer = 0;
-  }
-}
-
-void WM_InvalidateToolbar()
-{
-	sdl.toolbar.invalid = sdl.window.toolbarstart;
-	render.frameskip.count = render.frameskip.max;
-}
-
-void WM_UpdateToolbar()
-{
-    if (sdl.toolbar.forced && sdl.toolbar.transparent && render.scale.height > sdl.window.toolbarstart) {
-      WM_InvalidateToolbar();
-    }
-
-    if ((sdl.window.height-sdl.window.toolbarstart)<2) return;
-
-    WM_DrawToolbar();
-}
-
-extern Bit8u int10_font_08[256 * 8];
-
-void DrawToolbarChar(unsigned char ch, Bits x, Bits y)
-{
-  Bit8u c, *pc;
-  Bits xx, yy, i;
-  Bit16u bg = *(Bit16u*)(&sdl.toolbar.gfx[0]);
-  pc=int10_font_08 + ch*8;
-  for (yy=0; yy<8; yy++) {
-    c=*pc;
-    i=((y + yy)*320 + x);
-    for (xx=0; xx<8; xx++) {
-      if (c & 0x80)
-        *(Bit16u*)(&sdl.toolbar.gfx[i])=0;
-      else
-        *(Bit16u*)(&sdl.toolbar.gfx[i])=bg;
-      c=c << 1;
-      i++;
-    }
-    pc++;
-  }
-}
-
-void DrawToolbarText(char* Text, Bits x, Bits y, Bits cnt)
-{
-  Bits xx = x;
-  while (*Text || cnt) {
-    if (*Text != '\n') {
-      DrawToolbarChar(*Text, xx, y);
-      cnt--;
-      xx+=8;
-    }
-    else
-      xx=320;
-    if (*Text)
-      Text++;
-    if (xx > 295) {
-      xx=x;
-      y+=8;
-      if (y > sdl.toolbar.height-8)
-        break;
-    }
-  }
-}
-
-
-void WM_Init()
-{
-	WM_InvalidateToolbar();
-	switch (sdl.toolbar.current)	{
-		case 0: WM_LoadToolbar(toolbar1,0); break;
-		case 1: WM_LoadToolbar(toolbar2,1); break;
-		case 2: WM_LoadToolbar(toolbar3,2); break;
-	}
-
-    if (sdl.toolbar.forced) {
-	sdl.window.toolbarstart = sdl.window.height - sdl.toolbar.forcedsize;
-    } else {
-	sdl.window.toolbarstart = render.scale.height;
-    };
-	if (sdl.toolbar.height <= (sdl.window.height-sdl.window.toolbarstart) )
-		sdl.window.toolbarstart = sdl.window.height - sdl.toolbar.height;
-	sdl.toolbar.vislines = sdl.window.height-sdl.window.toolbarstart;
-        if (sdl.toolbar.vislines>(sdl.toolbar.height-sdl.toolbar.scrollpos)) sdl.toolbar.scrollpos = sdl.toolbar.height-sdl.toolbar.vislines;
-	if (sdl.toolbar.current == 2) GFX_SetTitle(-1,-1,false);
-	WM_UpdateToolbar();
-}
-
-extern Bits cpuLoadDisp;
-extern Bits cyclesDisp;
-
 void GFX_SetTitle(Bit32s cycles,Bits frameskip,bool paused){
 	char title[200]={0};
 	static Bit32s internal_cycles=0;
 	static Bits internal_frameskip=0;
 	if(cycles != -1) internal_cycles = cycles;
 	if(frameskip != -1) internal_frameskip = frameskip;
-
 	if(CPU_CycleAutoAdjust) {
 		if (internal_cycles>=100)
-			sprintf(title,"DOSBox %s, C: max, FS %2d, P: %8s",VERSION,internal_frameskip,RunningProgram);
+			sprintf(title,"DOSBox %s, Cpu Cycles:      max, Frameskip %2d, Program: %8s",VERSION,internal_frameskip,RunningProgram);
 		else
-			sprintf(title,"DOSBox %s, C: [%3d%%], FS %2d, P: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
+			sprintf(title,"DOSBox %s, Cpu Cycles:   [%3d%%], Frameskip %2d, Program: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
 	} else {
-		sprintf(title,"DOSBox %s, C: %8d, FS %2d, P: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
+		sprintf(title,"DOSBox %s, Cpu Cycles: %8d, Frameskip %2d, Program: %8s",VERSION,internal_cycles,internal_frameskip,RunningProgram);
 	}
 
 	if(paused) strcat(title," PAUSED");
 	SDL_WM_SetCaption(title,VERSION);
-
-  if (sdl.toolbar.current == 2) {
-    sprintf(title,"FS: %d",internal_frameskip);
-    DrawToolbarText(title, 135, 4, 20);
-    sprintf(title,"Cycles: %d",internal_cycles);
-    DrawToolbarText(title, 135, 4+8, 20);
-//    sprintf(title,"CPU load: %d.%d%%",cpuLoadDisp/10,cpuLoadDisp % 10);
-//    DrawToolbarText(title, 135, 4+16, 20);
-    WM_UpdateToolbar();
-  }
 }
 
 static void PauseDOSBox(bool pressed) {
@@ -566,8 +263,8 @@ static void PauseDOSBox(bool pressed) {
 		SDL_WaitEvent(&event);    // since we're not polling, cpu usage drops to 0.
 		switch (event.type) {
 
-			case SDL_QUIT:
-                // FIXME
+			case SDL_QUIT: 
+				// FIXME
                 printf("bad modification!!!");
                 exit(1);
                 // throw(0);
@@ -592,12 +289,73 @@ bool GFX_SDLUsingWinDIB(void) {
 
 /* Reset the screen with current values in the sdl structure */
 Bitu GFX_GetBestMode(Bitu flags) {
-	return GFX_LOVE_16|GFX_CAN_16;
+	Bitu testbpp,gotbpp;
+	switch (sdl.desktop.want_type) {
+	case SCREEN_SURFACE:
+check_surface:
+		/* Check if we can satisfy the depth it loves */
+		if (flags & GFX_LOVE_8) testbpp=8;
+		else if (flags & GFX_LOVE_15) testbpp=15;
+		else if (flags & GFX_LOVE_16) testbpp=16;
+		else if (flags & GFX_LOVE_32) testbpp=32;
+		else testbpp=0;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+check_gotbpp:
+#endif
+		if (sdl.desktop.fullscreen) gotbpp=SDL_VideoModeOK(640,480,testbpp,SDL_FULLSCREEN|SDL_HWSURFACE|SDL_HWPALETTE);
+		else gotbpp=sdl.desktop.bpp;
+		/* If we can't get our favorite mode check for another working one */
+		switch (gotbpp) {
+		case 8:
+			if (flags & GFX_CAN_8) flags&=~(GFX_CAN_15|GFX_CAN_16|GFX_CAN_32);
+			break;
+		case 15:
+			if (flags & GFX_CAN_15) flags&=~(GFX_CAN_8|GFX_CAN_16|GFX_CAN_32);
+			break;
+		case 16:
+			if (flags & GFX_CAN_16) flags&=~(GFX_CAN_8|GFX_CAN_15|GFX_CAN_32);
+			break;
+		case 24:
+		case 32:
+			if (flags & GFX_CAN_32) flags&=~(GFX_CAN_8|GFX_CAN_15|GFX_CAN_16);
+			break;
+		}
+		flags |= GFX_CAN_RANDOM;
+		break;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	case SCREEN_SURFACE_DDRAW:
+		if (!(flags&(GFX_CAN_15|GFX_CAN_16|GFX_CAN_32))) goto check_surface;
+		if (flags & GFX_LOVE_15) testbpp=15;
+		else if (flags & GFX_LOVE_16) testbpp=16;
+		else if (flags & GFX_LOVE_32) testbpp=32;
+		else testbpp=0;
+		flags|=GFX_SCALING;
+		goto check_gotbpp;
+#endif
+	case SCREEN_OVERLAY:
+		if (flags & GFX_RGBONLY || !(flags&GFX_CAN_32)) goto check_surface;
+		flags|=GFX_SCALING;
+		flags&=~(GFX_CAN_8|GFX_CAN_15|GFX_CAN_16);
+		break;
+#if C_OPENGL
+	case SCREEN_OPENGL:
+		if (flags & GFX_RGBONLY || !(flags&GFX_CAN_32)) goto check_surface;
+		flags|=GFX_SCALING;
+		flags&=~(GFX_CAN_8|GFX_CAN_15|GFX_CAN_16);
+		break;
+#endif
+	default:
+		goto check_surface;
+		break;
+	}
+	return flags;
 }
 
 
 void GFX_ResetScreen(void) {
 	GFX_Stop();
+	if (sdl.draw.callback)
+		(sdl.draw.callback)( GFX_CallBackReset );
 	GFX_Start();
 	CPU_Reset_AutoAdjust();
 }
@@ -610,16 +368,329 @@ static int int_log2 (int val) {
 }
 
 
-Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags) {
+static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
+	Bit16u fixedWidth;
+	Bit16u fixedHeight;
+
+	if (sdl.desktop.fullscreen) {
+		fixedWidth = sdl.desktop.full.fixed ? sdl.desktop.full.width : 0;
+		fixedHeight = sdl.desktop.full.fixed ? sdl.desktop.full.height : 0;
+		sdl_flags |= SDL_FULLSCREEN|SDL_HWSURFACE;
+	} else {
+		fixedWidth = sdl.desktop.window.width;
+		fixedHeight = sdl.desktop.window.height;
+		sdl_flags |= SDL_HWSURFACE;
+	}
+	if (fixedWidth && fixedHeight) {
+		double ratio_w=(double)fixedWidth/(sdl.draw.width*sdl.draw.scalex);
+		double ratio_h=(double)fixedHeight/(sdl.draw.height*sdl.draw.scaley);
+		if ( ratio_w < ratio_h) {
+			sdl.clip.w=fixedWidth;
+			sdl.clip.h=(Bit16u)(sdl.draw.height*sdl.draw.scaley*ratio_w);
+		} else {
+			sdl.clip.w=(Bit16u)(sdl.draw.width*sdl.draw.scalex*ratio_h);
+			sdl.clip.h=(Bit16u)fixedHeight;
+		}
+		if (sdl.desktop.fullscreen)
+			sdl.surface = SDL_SetVideoMode(fixedWidth,fixedHeight,bpp,sdl_flags);
+		else
+			sdl.surface = SDL_SetVideoMode(sdl.clip.w,sdl.clip.h,bpp,sdl_flags);
+		if (sdl.surface && sdl.surface->flags & SDL_FULLSCREEN) {
+			sdl.clip.x=(Sint16)((sdl.surface->w-sdl.clip.w)/2);
+			sdl.clip.y=(Sint16)((sdl.surface->h-sdl.clip.h)/2);
+		} else {
+			sdl.clip.x = 0;
+			sdl.clip.y = 0;
+		}
+		return sdl.surface;
+	} else {
+		sdl.clip.x=0;sdl.clip.y=0;
+		sdl.clip.w=(Bit16u)(sdl.draw.width*sdl.draw.scalex);
+		sdl.clip.h=(Bit16u)(sdl.draw.height*sdl.draw.scaley);
+		sdl.surface=SDL_SetVideoMode(sdl.clip.w,sdl.clip.h,bpp,sdl_flags);
+		return sdl.surface;
+	}
+}
+
+Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,GFX_CallBack_t callback) {
 	if (sdl.updating)
 		GFX_EndUpdate( 0 );
-	GFX_Start();
-	WM_Init();
-	return GFX_CAN_16;
+
+	sdl.draw.width=width;
+	sdl.draw.height=height;
+	sdl.draw.callback=callback;
+	sdl.draw.scalex=scalex;
+	sdl.draw.scaley=scaley;
+
+	Bitu bpp=0;
+	Bitu retFlags = 0;
+
+	if (sdl.blit.surface) {
+		SDL_FreeSurface(sdl.blit.surface);
+		sdl.blit.surface=0;
+	}
+	switch (sdl.desktop.want_type) {
+	case SCREEN_SURFACE:
+dosurface:
+		if (flags & GFX_CAN_8) bpp=8;
+		if (flags & GFX_CAN_15) bpp=15;
+		if (flags & GFX_CAN_16) bpp=16;
+		if (flags & GFX_CAN_32) bpp=32;
+		sdl.desktop.type=SCREEN_SURFACE;
+		sdl.clip.w=width;
+		sdl.clip.h=height;
+		if (sdl.desktop.fullscreen) {
+			if (sdl.desktop.full.fixed) {
+				sdl.clip.x=(Sint16)((sdl.desktop.full.width-width)/2);
+				sdl.clip.y=(Sint16)((sdl.desktop.full.height-height)/2);
+				sdl.surface=SDL_SetVideoMode(sdl.desktop.full.width,sdl.desktop.full.height,bpp,
+					SDL_FULLSCREEN | ((flags & GFX_CAN_RANDOM) ? SDL_SWSURFACE : SDL_HWSURFACE) |
+					(sdl.desktop.doublebuf ? SDL_DOUBLEBUF|SDL_ASYNCBLIT : 0) | SDL_HWPALETTE);
+				if (sdl.surface == NULL) E_Exit("Could not set fullscreen video mode %ix%i-%i: %s",sdl.desktop.full.width,sdl.desktop.full.height,bpp,SDL_GetError());
+			} else {
+				sdl.clip.x=0;sdl.clip.y=0;
+				sdl.surface=SDL_SetVideoMode(width,height,bpp,
+					SDL_FULLSCREEN | ((flags & GFX_CAN_RANDOM) ? SDL_SWSURFACE : SDL_HWSURFACE) |
+					(sdl.desktop.doublebuf ? SDL_DOUBLEBUF|SDL_ASYNCBLIT  : 0)|SDL_HWPALETTE);
+				if (sdl.surface == NULL)
+					E_Exit("Could not set fullscreen video mode %ix%i-%i: %s",width,height,bpp,SDL_GetError());
+			}
+		} else {
+			sdl.clip.x=0;sdl.clip.y=0;
+			sdl.surface=SDL_SetVideoMode(width,height,bpp,(flags & GFX_CAN_RANDOM) ? SDL_SWSURFACE : SDL_HWSURFACE);
+#ifdef WIN32
+			if (sdl.surface == NULL) {
+				SDL_QuitSubSystem(SDL_INIT_VIDEO);
+				if (!sdl.using_windib) {
+					LOG_MSG("Failed to create hardware surface.\nRestarting video subsystem with windib enabled.");
+					putenv("SDL_VIDEODRIVER=windib");
+					sdl.using_windib=true;
+				} else {
+					LOG_MSG("Failed to create hardware surface.\nRestarting video subsystem with directx enabled.");
+					putenv("SDL_VIDEODRIVER=directx");
+					sdl.using_windib=false;
+				}
+				SDL_InitSubSystem(SDL_INIT_VIDEO);
+				sdl.surface = SDL_SetVideoMode(width,height,bpp,SDL_HWSURFACE);
+			}
+#endif
+			if (sdl.surface == NULL)
+				E_Exit("Could not set windowed video mode %ix%i-%i: %s",width,height,bpp,SDL_GetError());
+		}
+		if (sdl.surface) {
+			switch (sdl.surface->format->BitsPerPixel) {
+			case 8:
+				retFlags = GFX_CAN_8;
+                break;
+			case 15:
+				retFlags = GFX_CAN_15;
+				break;
+			case 16:
+				retFlags = GFX_CAN_16;
+                break;
+			case 32:
+				retFlags = GFX_CAN_32;
+                break;
+			}
+			if (retFlags && (sdl.surface->flags & SDL_HWSURFACE))
+				retFlags |= GFX_HARDWARE;
+			if (retFlags && (sdl.surface->flags & SDL_DOUBLEBUF)) {
+				sdl.blit.surface=SDL_CreateRGBSurface(SDL_HWSURFACE,
+					sdl.draw.width, sdl.draw.height,
+					sdl.surface->format->BitsPerPixel,
+					sdl.surface->format->Rmask,
+					sdl.surface->format->Gmask,
+					sdl.surface->format->Bmask,
+				0);
+				/* If this one fails be ready for some flickering... */
+			}
+		}
+		break;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	case SCREEN_SURFACE_DDRAW:
+		if (flags & GFX_CAN_15) bpp=15;
+		if (flags & GFX_CAN_16) bpp=16;
+		if (flags & GFX_CAN_32) bpp=32;
+		if (!GFX_SetupSurfaceScaled((sdl.desktop.doublebuf && sdl.desktop.fullscreen) ? SDL_DOUBLEBUF : 0,bpp)) goto dosurface;
+		sdl.blit.rect.top=sdl.clip.y;
+		sdl.blit.rect.left=sdl.clip.x;
+		sdl.blit.rect.right=sdl.clip.x+sdl.clip.w;
+		sdl.blit.rect.bottom=sdl.clip.y+sdl.clip.h;
+		sdl.blit.surface=SDL_CreateRGBSurface(SDL_HWSURFACE,sdl.draw.width,sdl.draw.height,
+				sdl.surface->format->BitsPerPixel,
+				sdl.surface->format->Rmask,
+				sdl.surface->format->Gmask,
+				sdl.surface->format->Bmask,
+				0);
+		if (!sdl.blit.surface || (!sdl.blit.surface->flags&SDL_HWSURFACE)) {
+			if (sdl.blit.surface) {
+				SDL_FreeSurface(sdl.blit.surface);
+				sdl.blit.surface=0;
+			}
+			LOG_MSG("Failed to create ddraw surface, back to normal surface.");
+			goto dosurface;
+		}
+		switch (sdl.surface->format->BitsPerPixel) {
+		case 15:
+			retFlags = GFX_CAN_15 | GFX_SCALING | GFX_HARDWARE;
+			break;
+		case 16:
+			retFlags = GFX_CAN_16 | GFX_SCALING | GFX_HARDWARE;
+               break;
+		case 32:
+			retFlags = GFX_CAN_32 | GFX_SCALING | GFX_HARDWARE;
+               break;
+		}
+		sdl.desktop.type=SCREEN_SURFACE_DDRAW;
+		break;
+#endif
+	case SCREEN_OVERLAY:
+		if (sdl.overlay) {
+			SDL_FreeYUVOverlay(sdl.overlay);
+			sdl.overlay=0;
+		}
+		if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
+		if (!GFX_SetupSurfaceScaled(0,0)) goto dosurface;
+		sdl.overlay=SDL_CreateYUVOverlay(width*2,height,SDL_UYVY_OVERLAY,sdl.surface);
+		if (!sdl.overlay) {
+			LOG_MSG("SDL:Failed to create overlay, switching back to surface");
+			goto dosurface;
+		}
+		sdl.desktop.type=SCREEN_OVERLAY;
+		retFlags = GFX_CAN_32 | GFX_SCALING | GFX_HARDWARE;
+		break;
+#if C_OPENGL
+	case SCREEN_OPENGL:
+	{
+		if (sdl.opengl.framebuf) {
+#if defined(NVIDIA_PixelDataRange)
+			if (sdl.opengl.pixel_data_range) db_glFreeMemoryNV(sdl.opengl.framebuf);
+			else
+#endif
+			free(sdl.opengl.framebuf);
+		}
+		sdl.opengl.framebuf=0;
+		if (!(flags&GFX_CAN_32) || (flags & GFX_RGBONLY)) goto dosurface;
+		int texsize=2 << int_log2(width > height ? width : height);
+		if (texsize>sdl.opengl.max_texsize) {
+			LOG_MSG("SDL:OPENGL:No support for texturesize of %d, falling back to surface",texsize);
+			goto dosurface;
+		}
+		SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+#if defined (WIN32) && SDL_VERSION_ATLEAST(1, 2, 11)
+		SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, 0 );
+#endif
+		GFX_SetupSurfaceScaled(SDL_OPENGL,0);
+		if (!sdl.surface || sdl.surface->format->BitsPerPixel<15) {
+			LOG_MSG("SDL:OPENGL:Can't open drawing surface, are you running in 16bpp(or higher) mode?");
+			goto dosurface;
+		}
+		/* Create the texture and display list */
+#if defined(NVIDIA_PixelDataRange)
+		if (sdl.opengl.pixel_data_range) {
+			sdl.opengl.framebuf=db_glAllocateMemoryNV(width*height*4,0.0,1.0,1.0);
+			glPixelDataRangeNV(GL_WRITE_PIXEL_DATA_RANGE_NV,width*height*4,sdl.opengl.framebuf);
+			glEnableClientState(GL_WRITE_PIXEL_DATA_RANGE_NV);
+		} else {
+#else
+		{
+#endif
+			sdl.opengl.framebuf=malloc(width*height*4);		//32 bit color
+		}
+		sdl.opengl.pitch=width*4;
+		glViewport(sdl.clip.x,sdl.clip.y,sdl.clip.w,sdl.clip.h);
+		glMatrixMode (GL_PROJECTION);
+		glDeleteTextures(1,&sdl.opengl.texture);
+ 		glGenTextures(1,&sdl.opengl.texture);
+		glBindTexture(GL_TEXTURE_2D,sdl.opengl.texture);
+		// No borders
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		if (sdl.opengl.bilinear) {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		} else {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texsize, texsize, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, 0);
+
+		glClearColor (0.0, 0.0, 0.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT);
+		SDL_GL_SwapBuffers();
+		glClear(GL_COLOR_BUFFER_BIT);
+		glShadeModel (GL_FLAT);
+		glDisable (GL_DEPTH_TEST);
+		glDisable (GL_LIGHTING);
+		glDisable(GL_CULL_FACE);
+		glEnable(GL_TEXTURE_2D);
+		glMatrixMode (GL_MODELVIEW);
+		glLoadIdentity ();
+
+		GLfloat tex_width=((GLfloat)(width)/(GLfloat)texsize);
+		GLfloat tex_height=((GLfloat)(height)/(GLfloat)texsize);
+
+		if (glIsList(sdl.opengl.displaylist)) glDeleteLists(sdl.opengl.displaylist, 1);
+		sdl.opengl.displaylist = glGenLists(1);
+		glNewList(sdl.opengl.displaylist, GL_COMPILE);
+		glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
+		glBegin(GL_QUADS);
+		// lower left
+		glTexCoord2f(0,tex_height); glVertex2f(-1.0f,-1.0f);
+		// lower right
+		glTexCoord2f(tex_width,tex_height); glVertex2f(1.0f, -1.0f);
+		// upper right
+		glTexCoord2f(tex_width,0); glVertex2f(1.0f, 1.0f);
+		// upper left
+		glTexCoord2f(0,0); glVertex2f(-1.0f, 1.0f);
+		glEnd();
+		glEndList();
+		sdl.desktop.type=SCREEN_OPENGL;
+		retFlags = GFX_CAN_32 | GFX_SCALING;
+#if defined(NVIDIA_PixelDataRange)
+		if (sdl.opengl.pixel_data_range)
+			retFlags |= GFX_HARDWARE;
+#endif
+	break;
+		}//OPENGL
+#endif	//C_OPENGL
+	default:
+		goto dosurface;
+		break;
+	}//CASE
+	if (retFlags)
+		GFX_Start();
+	if (!sdl.mouse.autoenable) SDL_ShowCursor(sdl.mouse.autolock?SDL_DISABLE:SDL_ENABLE);
+	return retFlags;
+}
+
+void GFX_CaptureMouse(void) {
+	sdl.mouse.locked=!sdl.mouse.locked;
+	if (sdl.mouse.locked) {
+		SDL_WM_GrabInput(SDL_GRAB_ON);
+		SDL_ShowCursor(SDL_DISABLE);
+	} else {
+		SDL_WM_GrabInput(SDL_GRAB_OFF);
+		if (sdl.mouse.autoenable || !sdl.mouse.autolock) SDL_ShowCursor(SDL_ENABLE);
+	}
+        mouselocked=sdl.mouse.locked;
+}
+
+bool mouselocked; //Global variable for mapper
+static void CaptureMouse(bool pressed) {
+	if (!pressed)
+		return;
+	GFX_CaptureMouse();
 }
 
 void GFX_SwitchFullScreen(void) {
-	sdl.window.fullscreen=!sdl.window.fullscreen;
+	sdl.desktop.fullscreen=!sdl.desktop.fullscreen;
+	if (sdl.desktop.fullscreen) {
+		if (!sdl.mouse.locked) GFX_CaptureMouse();
+	} else {
+		if (sdl.mouse.locked) GFX_CaptureMouse();
+	}
 	GFX_ResetScreen();
 }
 
@@ -633,85 +704,194 @@ static void SwitchFullScreen(bool pressed) {
 bool GFX_StartUpdate(Bit8u * & pixels,Bitu & pitch) {
 	if (!sdl.active || sdl.updating)
 		return false;
-	GAPI_Buffer = (Bit16u*)_GAPIBeginDraw();
-	if (sdl.window.rotateright) {
-		pixels = (Bit8u*)GAPI_Buffer + (239)*2;
-		pitch = -2;
-	} else {
-		pixels = (Bit8u*)GAPI_Buffer + (319*240)*2;
-		pitch = 2;
+	switch (sdl.desktop.type) {
+	case SCREEN_SURFACE:
+		if (sdl.blit.surface) {
+			if (SDL_MUSTLOCK(sdl.blit.surface) && SDL_LockSurface(sdl.blit.surface))
+				return false;
+			pixels=(Bit8u *)sdl.blit.surface->pixels;
+			pitch=sdl.blit.surface->pitch;
+		} else {
+			if (SDL_MUSTLOCK(sdl.surface) && SDL_LockSurface(sdl.surface))
+				return false;
+			pixels=(Bit8u *)sdl.surface->pixels;
+			pixels+=sdl.clip.y*sdl.surface->pitch;
+			pixels+=sdl.clip.x*sdl.surface->format->BytesPerPixel;
+			pitch=sdl.surface->pitch;
+		}
+		sdl.updating=true;
+		return true;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	case SCREEN_SURFACE_DDRAW:
+		if (SDL_LockSurface(sdl.blit.surface)) {
+//			LOG_MSG("SDL Lock failed");
+			return false;
+		}
+		pixels=(Bit8u *)sdl.blit.surface->pixels;
+		pitch=sdl.blit.surface->pitch;
+		sdl.updating=true;
+		return true;
+#endif
+	case SCREEN_OVERLAY:
+		SDL_LockYUVOverlay(sdl.overlay);
+		pixels=(Bit8u *)*(sdl.overlay->pixels);
+		pitch=*(sdl.overlay->pitches);
+		sdl.updating=true;
+		return true;
+#if C_OPENGL
+	case SCREEN_OPENGL:
+		pixels=(Bit8u *)sdl.opengl.framebuf;
+		pitch=sdl.opengl.pitch;
+		sdl.updating=true;
+		return true;
+#endif
+	default:
+		break;
 	}
-	sdl.updating=true;
-	return true;
+	return false;
 }
 
 
 void GFX_EndUpdate( const Bit16u *changedLines ) {
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	int ret;
+#endif
 	if (!sdl.updating)
 		return;
 	sdl.updating=false;
-        _GAPIEndDraw();
-	GAPI_Buffer = 0;
-}
-
-void WM_PreInit()
-{
-memset(&sdl,0,sizeof(sdl));
-sdl.toolbar.invalid=0;
-sdl.toolbar.prev=100;
-sdl.toolbar.forcedsize=40;
-}
-
-void WM_LoadToolbar(char* tbname, int tbnum)
-{
-if (sdl.toolbar.prev!=tbnum) {
-	sprintf(fullname,"%s\\%s",mypath,tbname);
-	FILE * hand = fopen(fullname,"rb");
-	if (!hand) return;
-	fread(&sdl.toolbar.height,1, 4, hand);
-	fread(&sdl.toolbar.gfx[0],1,sdl.toolbar.height*320*2, hand);
-	fread(&sdl.toolbar.keycode[0],1,320*sdl.toolbar.height, hand);
-	fclose(hand);
-	int x;
-	for (x=0;x<255;x++) sdl.toolbar.pressed[x]=false;
-	sdl.mouse.noclick=false;
-	sdl.toolbar.prev=tbnum;
-	sdl.toolbar.scrollpos=0;
-	WM_ClearToolbarArea();
+	switch (sdl.desktop.type) {
+	case SCREEN_SURFACE:
+		if (SDL_MUSTLOCK(sdl.surface)) {
+			if (sdl.blit.surface) {
+				SDL_UnlockSurface(sdl.blit.surface);
+				int Blit = SDL_BlitSurface( sdl.blit.surface, 0, sdl.surface, &sdl.clip );
+				LOG(LOG_MISC,LOG_WARN)("BlitSurface returned %d",Blit);
+			} else {
+				SDL_UnlockSurface(sdl.surface);
+			}
+			SDL_Flip(sdl.surface);
+		} else if (changedLines) {
+			Bitu y = 0, index = 0, rectCount = 0;
+			while (y < sdl.draw.height) {
+				if (!(index & 1)) {
+					y += changedLines[index];
+				} else {
+					SDL_Rect *rect = &sdl.updateRects[rectCount++];
+					rect->x = sdl.clip.x;
+					rect->y = sdl.clip.y + y;
+					rect->w = (Bit16u)sdl.draw.width;
+					rect->h = changedLines[index];
+#if 0
+					if (rect->h + rect->y > sdl.surface->h) {
+						LOG_MSG("WTF %d +  %d  >%d",rect->h,rect->y,sdl.surface->h);
+					}
+#endif
+					y += changedLines[index];
+				}
+				index++;
+			}
+			if (rectCount)
+				SDL_UpdateRects( sdl.surface, rectCount, sdl.updateRects );
+		}
+		break;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	case SCREEN_SURFACE_DDRAW:
+		SDL_UnlockSurface(sdl.blit.surface);
+		ret=IDirectDrawSurface3_Blt(
+			sdl.surface->hwdata->dd_writebuf,&sdl.blit.rect,
+			sdl.blit.surface->hwdata->dd_surface,0,
+			DDBLT_WAIT, NULL);
+		switch (ret) {
+		case DD_OK:
+			break;
+		case DDERR_SURFACELOST:
+			IDirectDrawSurface3_Restore(sdl.blit.surface->hwdata->dd_surface);
+			IDirectDrawSurface3_Restore(sdl.surface->hwdata->dd_surface);
+			break;
+		default:
+			LOG_MSG("DDRAW:Failed to blit, error %X",ret);
+		}
+		SDL_Flip(sdl.surface);
+		break;
+#endif
+	case SCREEN_OVERLAY:
+		SDL_UnlockYUVOverlay(sdl.overlay);
+		SDL_DisplayYUVOverlay(sdl.overlay,&sdl.clip);
+		break;
+#if C_OPENGL
+	case SCREEN_OPENGL:
+#if defined(NVIDIA_PixelDataRange)
+		if (sdl.opengl.pixel_data_range) {
+            glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+					sdl.draw.width, sdl.draw.height, GL_BGRA_EXT,
+					GL_UNSIGNED_INT_8_8_8_8_REV, sdl.opengl.framebuf);
+			glCallList(sdl.opengl.displaylist);
+			SDL_GL_SwapBuffers();
+		} else
+#endif
+		if (changedLines) {
+			Bitu y = 0, index = 0;
+            glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
+			while (y < sdl.draw.height) {
+				if (!(index & 1)) {
+					y += changedLines[index];
+				} else {
+					Bit8u *pixels = (Bit8u *)sdl.opengl.framebuf + y * sdl.opengl.pitch;
+					Bitu height = changedLines[index];
+					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y,
+						sdl.draw.width, height, GL_BGRA_EXT,
+						GL_UNSIGNED_INT_8_8_8_8_REV, pixels );
+					y += height;
+				}
+				index++;
+			}
+			glCallList(sdl.opengl.displaylist);
+			SDL_GL_SwapBuffers();
+		}
+		break;
+#endif
+	default:
+		break;
 	}
-sdl.toolbar.scrollactive=false;
 }
 
-int  update_counter = 100;
-void WM_Update()
-{
 
-	if (sdl.mouse.needticks) sdl.mouse.delayticks++;
-
-	if (sdl.tpad.releasedelay&&sdl.tpad.on)	{
-		sdl.tpad.releasedelay--;
-		if (!sdl.tpad.releasedelay) {
-			if (!sdl.mouse.right) Mouse_ButtonReleased(0); else Mouse_ButtonReleased(1);
-			sdl.mouse.right=false; }
-	}
-
-	if (update_counter--) return;
-	update_counter = 100;
-	if (sdl.dpad.on) {
-	    if (sdl.dpad.x!=0 | sdl.dpad.y!=0) {
-		Mouse_MoveCursor(sdl.dpad.x,sdl.dpad.y);
-		sdl.dpad.x=sdl.dpad.x+sdl.dpad.x/10;
-		sdl.dpad.y=sdl.dpad.y+sdl.dpad.y/10;
+void GFX_SetPalette(Bitu start,Bitu count,GFX_PalEntry * entries) {
+	/* I should probably not change the GFX_PalEntry :) */
+	if (sdl.surface->flags & SDL_HWPALETTE) {
+		if (!SDL_SetPalette(sdl.surface,SDL_PHYSPAL,(SDL_Color *)entries,start,count)) {
+			E_Exit("SDL:Can't set palette");
+		}
+	} else {
+		if (!SDL_SetPalette(sdl.surface,SDL_LOGPAL,(SDL_Color *)entries,start,count)) {
+			E_Exit("SDL:Can't set palette");
 		}
 	}
 }
 
-void GFX_SetPalette(Bitu start,Bitu count,GFX_PalEntry * entries) {
-/* no support */
-}
-
 Bitu GFX_GetRGB(Bit8u red,Bit8u green,Bit8u blue) {
+	switch (sdl.desktop.type) {
+	case SCREEN_SURFACE:
+	case SCREEN_SURFACE_DDRAW:
 		return SDL_MapRGB(sdl.surface->format,red,green,blue);
+	case SCREEN_OVERLAY:
+		{
+			Bit8u y =  ( 9797*(red) + 19237*(green) +  3734*(blue) ) >> 15;
+			Bit8u u =  (18492*((blue)-(y)) >> 15) + 128;
+			Bit8u v =  (23372*((red)-(y)) >> 15) + 128;
+#ifdef WORDS_BIGENDIAN
+			return (y << 0) | (v << 8) | (y << 16) | (u << 24);
+#else
+			return (u << 0) | (y << 8) | (v << 16) | (y << 24);
+#endif
+		}
+	case SCREEN_OPENGL:
+//		return ((red << 0) | (green << 8) | (blue << 16)) | (255 << 24);
+		//USE BGRA
+		return ((blue << 0) | (green << 8) | (red << 16)) | (255 << 24);
+	}
+	return 0;
 }
 
 void GFX_Stop() {
@@ -721,30 +901,102 @@ void GFX_Stop() {
 }
 
 void GFX_Start() {
-	GAPI_Buffer = (Bit16u*)_GAPIBeginDraw();
-	memset(GAPI_Buffer,0,320*240*2);
 	sdl.active=true;
-	_GAPIEndDraw();
-        GAPI_Buffer = 0;
 }
 
 static void GUI_ShutDown(Section * /*sec*/) {
 	GFX_Stop();
-	if (sdl.window.fullscreen) GFX_SwitchFullScreen();
+	if (sdl.draw.callback) (sdl.draw.callback)( GFX_CallBackStop );
+	if (sdl.mouse.locked) GFX_CaptureMouse();
+	if (sdl.desktop.fullscreen) GFX_SwitchFullScreen();
 }
 
 static void KillSwitch(bool pressed) {
 	if (!pressed)
 		return;
-    // FIXME
+	// FIXME
 	//throw 1;
     printf("bad modification!!!");
+}
+
+static void SetPriority(PRIORITY_LEVELS level) {
+
+#if C_SET_PRIORITY
+// Do nothing if priorties are not the same and not root, else the highest
+// priority can not be set as users can only lower priority (not restore it)
+
+	if((sdl.priority.focus != sdl.priority.nofocus ) &&
+		(getuid()!=0) ) return;
+
+#endif
+	switch (level) {
+#ifdef WIN32
+	case PRIORITY_LEVEL_PAUSE:	// if DOSBox is paused, assume idle priority
+	case PRIORITY_LEVEL_LOWEST:
+		SetPriorityClass(GetCurrentProcess(),IDLE_PRIORITY_CLASS);
+		break;
+	case PRIORITY_LEVEL_LOWER:
+		SetPriorityClass(GetCurrentProcess(),BELOW_NORMAL_PRIORITY_CLASS);
+		break;
+	case PRIORITY_LEVEL_NORMAL:
+		SetPriorityClass(GetCurrentProcess(),NORMAL_PRIORITY_CLASS);
+		break;
+	case PRIORITY_LEVEL_HIGHER:
+		SetPriorityClass(GetCurrentProcess(),ABOVE_NORMAL_PRIORITY_CLASS);
+		break;
+	case PRIORITY_LEVEL_HIGHEST:
+		SetPriorityClass(GetCurrentProcess(),HIGH_PRIORITY_CLASS);
+		break;
+#elif C_SET_PRIORITY
+/* Linux use group as dosbox has mulitple threads under linux */
+	case PRIORITY_LEVEL_PAUSE:	// if DOSBox is paused, assume idle priority
+	case PRIORITY_LEVEL_LOWEST:
+		setpriority (PRIO_PGRP, 0,PRIO_MAX);
+		break;
+	case PRIORITY_LEVEL_LOWER:
+		setpriority (PRIO_PGRP, 0,PRIO_MAX-(PRIO_TOTAL/3));
+		break;
+	case PRIORITY_LEVEL_NORMAL:
+		setpriority (PRIO_PGRP, 0,PRIO_MAX-(PRIO_TOTAL/2));
+		break;
+	case PRIORITY_LEVEL_HIGHER:
+		setpriority (PRIO_PGRP, 0,PRIO_MAX-((3*PRIO_TOTAL)/5) );
+		break;
+	case PRIORITY_LEVEL_HIGHEST:
+		setpriority (PRIO_PGRP, 0,PRIO_MAX-((3*PRIO_TOTAL)/4) );
+		break;
+#endif
+	default:
+		break;
+	}
+}
+
+extern Bit8u int10_font_14[256 * 14];
+static void OutputString(Bitu x,Bitu y,const char * text,Bit32u color,Bit32u color2,SDL_Surface * output_surface) {
+	Bit32u * draw=(Bit32u*)(((Bit8u *)output_surface->pixels)+((y)*output_surface->pitch))+x;
+	while (*text) {
+		Bit8u * font=&int10_font_14[(*text)*14];
+		Bitu i,j;
+		Bit32u * draw_line=draw;
+		for (i=0;i<14;i++) {
+			Bit8u map=*font++;
+			for (j=0;j<8;j++) {
+				if (map & 0x80) *((Bit32u*)(draw_line+j))=color; else *((Bit32u*)(draw_line+j))=color2;
+				map<<=1;
+			}
+			draw_line+=output_surface->pitch/4;
+		}
+		text++;
+		draw+=8;
+	}
 }
 
 static unsigned char logo[32*32*4]= {
 #include "dosbox_logo.h"
 };
+#include "dosbox_splash.h"
 
+//extern void UI_Run(bool);
 static void GUI_StartUp(Section * sec) {
 	sec->AddDestroyFunction(&GUI_ShutDown);
 	Section_prop * section=static_cast<Section_prop *>(sec);
@@ -762,52 +1014,233 @@ static void GUI_StartUp(Section * sec) {
 	SDL_WM_SetIcon(logos,NULL);
 #endif
 
-	sdl.window.fullscreen=section->Get_bool("fullscreen");
-	sdl.window.rotateright=section->Get_bool("rotateright");
+	sdl.desktop.fullscreen=section->Get_bool("fullscreen");
+	sdl.wait_on_error=section->Get_bool("waitonerror");
+
+	Prop_multival* p=section->Get_multival("priority");
+	std::string focus = p->GetSection()->Get_string("active");
+	std::string notfocus = p->GetSection()->Get_string("inactive");
+
+	if      (focus == "lowest")  { sdl.priority.focus = PRIORITY_LEVEL_LOWEST;  }
+	else if (focus == "lower")   { sdl.priority.focus = PRIORITY_LEVEL_LOWER;   }
+	else if (focus == "normal")  { sdl.priority.focus = PRIORITY_LEVEL_NORMAL;  }
+	else if (focus == "higher")  { sdl.priority.focus = PRIORITY_LEVEL_HIGHER;  }
+	else if (focus == "highest") { sdl.priority.focus = PRIORITY_LEVEL_HIGHEST; }
+
+	if      (notfocus == "lowest")  { sdl.priority.nofocus=PRIORITY_LEVEL_LOWEST;  }
+	else if (notfocus == "lower")   { sdl.priority.nofocus=PRIORITY_LEVEL_LOWER;   }
+	else if (notfocus == "normal")  { sdl.priority.nofocus=PRIORITY_LEVEL_NORMAL;  }
+	else if (notfocus == "higher")  { sdl.priority.nofocus=PRIORITY_LEVEL_HIGHER;  }
+	else if (notfocus == "highest") { sdl.priority.nofocus=PRIORITY_LEVEL_HIGHEST; }
+	else if (notfocus == "pause")   {
+		/* we only check for pause here, because it makes no sense
+		 * for DOSBox to be paused while it has focus
+		 */
+		sdl.priority.nofocus=PRIORITY_LEVEL_PAUSE;
+	}
+
+	SetPriority(sdl.priority.focus); //Assume focus on startup
+	sdl.mouse.locked=false;
+	mouselocked=false; //Global for mapper
+	sdl.mouse.requestlock=false;
+	sdl.desktop.full.fixed=false;
+	const char* fullresolution=section->Get_string("fullresolution");
+	sdl.desktop.full.width  = 0;
+	sdl.desktop.full.height = 0;
+	if(fullresolution && *fullresolution) {
+		char res[100];
+		strncpy( res, fullresolution, sizeof( res ));
+		fullresolution = lowcase (res);//so x and X are allowed
+		if(strcmp(fullresolution,"original")) {
+			sdl.desktop.full.fixed = true;
+			char* height = const_cast<char*>(strchr(fullresolution,'x'));
+			if(height && * height) {
+				*height = 0;
+				sdl.desktop.full.height = (Bit16u)atoi(height+1);
+				sdl.desktop.full.width  = (Bit16u)atoi(res);
+			}
+		}
+	}
+
+	sdl.desktop.window.width  = 0;
+	sdl.desktop.window.height = 0;
+	const char* windowresolution=section->Get_string("windowresolution");
+	if(windowresolution && *windowresolution) {
+		char res[100];
+		strncpy( res,windowresolution, sizeof( res ));
+		windowresolution = lowcase (res);//so x and X are allowed
+		if(strcmp(windowresolution,"original")) {
+			char* height = const_cast<char*>(strchr(windowresolution,'x'));
+			if(height && *height) {
+				*height = 0;
+				sdl.desktop.window.height = (Bit16u)atoi(height+1);
+				sdl.desktop.window.width  = (Bit16u)atoi(res);
+			}
+		}
+	}
+	sdl.desktop.doublebuf=section->Get_bool("fulldouble");
+	if (!sdl.desktop.full.width) {
+#ifdef WIN32
+		sdl.desktop.full.width=(Bit16u)GetSystemMetrics(SM_CXSCREEN);
+#else
+		sdl.desktop.full.width=1024;
+#endif
+	}
+	if (!sdl.desktop.full.height) {
+#ifdef WIN32
+		sdl.desktop.full.height=(Bit16u)GetSystemMetrics(SM_CYSCREEN);
+#else
+		sdl.desktop.full.height=768;
+#endif
+	}
+	sdl.mouse.autoenable=section->Get_bool("autolock");
+	if (!sdl.mouse.autoenable) SDL_ShowCursor(SDL_DISABLE);
+	sdl.mouse.autolock=false;
 	sdl.mouse.sensitivity=section->Get_int("sensitivity");
-	sdl.tpad.on=section->Get_bool("touchpadmouse");
-	sdl.tpad.clickms=section->Get_int("clickms");
-	sdl.tpad.rightclickdelay=section->Get_int("rightclickdelay");
-	sdl.dpad.on=section->Get_bool("dpadmouse");
-/* toolbars */
-	const char * tb1=section->Get_string("kbdtoolbar");
-	const char * tb2=section->Get_string("gametoolbar");
-	const char * tb3=section->Get_string("settoolbar");
-	if (tb1>"") strcpy(toolbar1,tb1);
-	if (tb2>"") strcpy(toolbar2,tb2);
-	if (tb3>"") strcpy(toolbar3,tb3);
-/* forced toolbar */
-	sdl.toolbar.forced=section->Get_bool("forcetoolbar");
-	sdl.toolbar.transparent=section->Get_bool("forcetransparent");
-	sdl.toolbar.forcedsize=section->Get_int("forceheight");
-	const char * ftz=section->Get_string("forcezone");
-/* awfully dumb parser */
-	int i,val;
-	i=0;
-	val=0; while (ftz[i]!=0x2C) {val=val*10+(ftz[i++]-0x30); }; sdl.window.tzx1=val; i++;
-	val=0; while (ftz[i]!=0x2C) {val=val*10+(ftz[i++]-0x30); }; sdl.window.tzy1=val; i++;
-	val=0; while (ftz[i]!=0x2C) {val=val*10+(ftz[i++]-0x30); }; sdl.window.tzx2=val+sdl.window.tzx1; i++;
-	val=0; while (ftz[i]!=0x00) {val=val*10+(ftz[i++]-0x30); }; sdl.window.tzy2=val+sdl.window.tzy1;
+	std::string output=section->Get_string("output");
 
-	//LOG_MSG("%d,%d,%d,%d",sdl.window.tzx1,sdl.window.tzy1,sdl.window.tzx2,sdl.window.tzy2);
+	/* Setup Mouse correctly if fullscreen */
+	if(sdl.desktop.fullscreen) GFX_CaptureMouse();
 
-/* Our window */
-	sdl.window.width=320;
-	sdl.window.height=240;
+	if (output == "surface") {
+		sdl.desktop.want_type=SCREEN_SURFACE;
+#if (HAVE_DDRAW_H) && defined(WIN32)
+	} else if (output == "ddraw") {
+		sdl.desktop.want_type=SCREEN_SURFACE_DDRAW;
+#endif
+	} else if (output == "overlay") {
+		sdl.desktop.want_type=SCREEN_OVERLAY;
+#if C_OPENGL
+	} else if (output == "opengl") {
+		sdl.desktop.want_type=SCREEN_OPENGL;
+		sdl.opengl.bilinear=true;
+	} else if (output == "openglnb") {
+		sdl.desktop.want_type=SCREEN_OPENGL;
+		sdl.opengl.bilinear=false;
+#endif
+	} else {
+		LOG_MSG("SDL:Unsupported output device %s, switching back to surface",output.c_str());
+		sdl.desktop.want_type=SCREEN_SURFACE;//SHOULDN'T BE POSSIBLE anymore
+	}
 
-/* fixme */
-//	sdl.surface=SDL_SetVideoMode(sdl.window.width,sdl.window.height,16,0);
+	sdl.overlay=0;
+#if C_OPENGL
+   if(sdl.desktop.want_type==SCREEN_OPENGL){ /* OPENGL is requested */
+	sdl.surface=SDL_SetVideoMode(640,400,0,SDL_OPENGL);
+	if (sdl.surface == NULL) {
+		LOG_MSG("Could not initialize OpenGL, switching back to surface");
+		sdl.desktop.want_type=SCREEN_SURFACE;
+	} else {
+	sdl.opengl.framebuf=0;
+	sdl.opengl.texture=0;
+	sdl.opengl.displaylist=0;
+	glGetIntegerv (GL_MAX_TEXTURE_SIZE, &sdl.opengl.max_texsize);
+#if defined(__WIN32__) && defined(NVIDIA_PixelDataRange)
+	glPixelDataRangeNV = (PFNGLPIXELDATARANGENVPROC) wglGetProcAddress("glPixelDataRangeNV");
+	db_glAllocateMemoryNV = (PFNWGLALLOCATEMEMORYNVPROC) wglGetProcAddress("wglAllocateMemoryNV");
+	db_glFreeMemoryNV = (PFNWGLFREEMEMORYNVPROC) wglGetProcAddress("wglFreeMemoryNV");
+#endif
+	const char * gl_ext = (const char *)glGetString (GL_EXTENSIONS);
+	if(gl_ext && *gl_ext){
+		sdl.opengl.packed_pixel=(strstr(gl_ext,"EXT_packed_pixels") > 0);
+		sdl.opengl.paletted_texture=(strstr(gl_ext,"EXT_paletted_texture") > 0);
+#if defined(NVIDIA_PixelDataRange)
+		sdl.opengl.pixel_data_range=(strstr(gl_ext,"GL_NV_pixel_data_range") >0 ) &&
+			glPixelDataRangeNV && db_glAllocateMemoryNV && db_glFreeMemoryNV;
+		sdl.opengl.pixel_data_range = 0;
+#endif
+    	} else {
+		sdl.opengl.packed_pixel=sdl.opengl.paletted_texture=false;
+	}
+	}
+	} /* OPENGL is requested end */
 
-if (!sdl.window.fullscreen)
-	sdl.surface=SDL_SetVideoMode(240,320,16,0);
-else
-	sdl.surface=SDL_SetVideoMode(240,320,16,SDL_FULLSCREEN);
-
+#endif	//OPENGL
+	/* Initialize screen for first time */
+	sdl.surface=SDL_SetVideoMode(640,400,0,0);
 	if (sdl.surface == NULL) E_Exit("Could not initialize video: %s",SDL_GetError());
-
+	sdl.desktop.bpp=sdl.surface->format->BitsPerPixel;
+	if (sdl.desktop.bpp==24) {
+		LOG_MSG("SDL:You are running in 24 bpp mode, this will slow down things!");
+	}
 	GFX_Stop();
-/* Get some Event handlers */
+	SDL_WM_SetCaption("DOSBox",VERSION);
+
+/* The endian part is intentionally disabled as somehow it produces correct results without according to rhoenie*/
+//#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+//    Bit32u rmask = 0xff000000;
+//    Bit32u gmask = 0x00ff0000;
+//    Bit32u bmask = 0x0000ff00;
+//#else
+    Bit32u rmask = 0x000000ff;
+    Bit32u gmask = 0x0000ff00;
+    Bit32u bmask = 0x00ff0000;
+//#endif
+
+/* Please leave the Splash screen stuff in working order in DOSBox. We spend a lot of time making DOSBox. */
+	SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
+	if (splash_surf) {
+		SDL_FillRect(splash_surf, NULL, SDL_MapRGB(splash_surf->format, 0, 0, 0));
+
+		Bit8u* tmpbufp = new Bit8u[640*400*3];
+		GIMP_IMAGE_RUN_LENGTH_DECODE(tmpbufp,gimp_image.rle_pixel_data,640*400,3);
+		for (Bitu y=0; y<400; y++) {
+
+			Bit8u* tmpbuf = tmpbufp + y*640*3;
+			Bit32u * draw=(Bit32u*)(((Bit8u *)splash_surf->pixels)+((y)*splash_surf->pitch));
+			for (Bitu x=0; x<640; x++) {
+//#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+//				*draw++ = tmpbuf[x*3+2]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+0]*0x10000+0x00000000;
+//#else
+				*draw++ = tmpbuf[x*3+0]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+2]*0x10000+0x00000000;
+//#endif
+			}
+		}
+
+		bool exit_splash = false;
+
+		static Bitu max_splash_loop = 600;
+		static Bitu splash_fade = 100;
+		static bool use_fadeout = true;
+
+		for (Bit32u ct = 0,startticks = GetTicks();ct < max_splash_loop;ct = GetTicks()-startticks) {
+			SDL_Event evt;
+			while (SDL_PollEvent(&evt)) {
+				if (evt.type == SDL_QUIT) {
+					exit_splash = true;
+					break;
+				}
+			}
+			if (exit_splash) break;
+
+			if (ct<1) {
+				SDL_FillRect(sdl.surface, NULL, SDL_MapRGB(sdl.surface->format, 0, 0, 0));
+				SDL_SetAlpha(splash_surf, SDL_SRCALPHA,255);
+				SDL_BlitSurface(splash_surf, NULL, sdl.surface, NULL);
+				SDL_Flip(sdl.surface);
+			} else if (ct>=max_splash_loop-splash_fade) {
+				if (use_fadeout) {
+					SDL_FillRect(sdl.surface, NULL, SDL_MapRGB(sdl.surface->format, 0, 0, 0));
+					SDL_SetAlpha(splash_surf, SDL_SRCALPHA, (Bit8u)((max_splash_loop-1-ct)*255/(splash_fade-1)));
+					SDL_BlitSurface(splash_surf, NULL, sdl.surface, NULL);
+					SDL_Flip(sdl.surface);
+				}
+			}
+
+		}
+
+		if (use_fadeout) {
+			SDL_FillRect(sdl.surface, NULL, SDL_MapRGB(sdl.surface->format, 0, 0, 0));
+			SDL_Flip(sdl.surface);
+		}
+		SDL_FreeSurface(splash_surf);
+		delete [] tmpbufp;
+
+	}
+
+	/* Get some Event handlers */
 	MAPPER_AddHandler(KillSwitch,MK_f9,MMOD1,"shutdown","ShutDown");
+	MAPPER_AddHandler(CaptureMouse,MK_f10,MMOD1,"capmouse","Cap Mouse");
 	MAPPER_AddHandler(SwitchFullScreen,MK_return,MMOD2,"fullscr","Fullscreen");
 #if C_DEBUG
 	/* Pause binds with activate-debugger */
@@ -816,113 +1249,40 @@ else
 #endif
 	/* Get Keyboard state of numlock and capslock */
 	SDLMod keystate = SDL_GetModState();
-
-/* n0p - our specials */
-	MAPPER_AddHandler(MouseButton_Left, (MapKeys)0xC2,0,"mbtn_left","Left mouse button");
-	MAPPER_AddHandler(MouseButton_Right,(MapKeys)0xC3,0,"mbtn_right","Right mouse button");
-	MAPPER_AddHandler(MouseButton_Middle, (MapKeys)0xC4,0,"mbtn_mdl","Middle mouse button");
-	MAPPER_AddHandler(Force_Toolbar,(MapKeys)0xC1,0,"force_tlbr","Force toolbar display");
-	MAPPER_AddHandler(Mouse_Up,(MapKeys)0xC1,0,"mm_up","Move mouse up");
-	MAPPER_AddHandler(Mouse_Down,(MapKeys)0xC1,0,"mm_down","Move mouse down");
-	MAPPER_AddHandler(Mouse_Left,(MapKeys)0xC1,0,"mm_left","Move mouse left");
-	MAPPER_AddHandler(Mouse_Right,(MapKeys)0xC1,0,"mm_right","Move mouse right");
-
 	if(keystate&KMOD_NUM) startup_state_numlock = true;
 	if(keystate&KMOD_CAPS) startup_state_capslock = true;
 }
 
 void Mouse_AutoLock(bool enable) {
-/* dummy */
+	sdl.mouse.autolock=enable;
+	if (sdl.mouse.autoenable) sdl.mouse.requestlock=enable;
+	else {
+		SDL_ShowCursor(enable?SDL_DISABLE:SDL_ENABLE);
+		sdl.mouse.requestlock=false;
+	}
 }
-
 
 static void HandleMouseMotion(SDL_MouseMotionEvent * motion) {
-	int c;
-	int mx = motion->x;
-	int my = motion->y;
-
-if (!sdl.window.rotateright) {
-	c = my;
-	my = mx;
-	mx = 320-1-c;
-} else {
-	c = my;
-	my = 240-1-mx;
-	mx = c;
-}
-
-      if(my>sdl.window.toolbarstart) {
-           sdl.tpad.active=false;
-           if (sdl.toolbar.scrollactive) {
-           	int L=(my-(sdl.window.height-sdl.toolbar.vislines));
-           	sdl.toolbar.scrollpos-=(L-sdl.toolbar.oldscpos);
-           	sdl.toolbar.oldscpos=L;
-           	if (sdl.toolbar.scrollpos<0) sdl.toolbar.scrollpos=0;
-           	if (sdl.toolbar.scrollpos>(sdl.toolbar.height-sdl.toolbar.vislines)) sdl.toolbar.scrollpos=sdl.toolbar.height-sdl.toolbar.vislines;
-           WM_UpdateToolbar();
-           }
-        return;
-        }
-
-        sdl.toolbar.scrollactive=false;
-
-    if (!sdl.tpad.on)
-	Mouse_SetCursor((mx*render.src.width)/render.scale.width,(my*render.src.height)/render.scale.height,((float)mx*100)/(float)render.scale.width, ((float)my*100)/(float)render.scale.height );
-
-	if (sdl.tpad.on) {
-            if (sdl.tpad.active) {
-				if (sdl.tpad.x!=mx) sdl.tpad.moved=true;
-				if (sdl.tpad.y!=my) sdl.tpad.moved=true;
-				Mouse_MoveCursor(float((mx-sdl.tpad.x)*float(sdl.mouse.sensitivity))/100, float((my-sdl.tpad.y)*float(sdl.mouse.sensitivity))/100);
-				sdl.tpad.x=mx; sdl.tpad.y=my;
-				}
-        return;
-        }
-
+	if (sdl.mouse.locked || !sdl.mouse.autoenable)
+		Mouse_CursorMoved((float)motion->xrel*sdl.mouse.sensitivity/100.0f,
+						  (float)motion->yrel*sdl.mouse.sensitivity/100.0f,
+						  (float)(motion->x-sdl.clip.x)/(sdl.clip.w-1)*sdl.mouse.sensitivity/100.0f,
+						  (float)(motion->y-sdl.clip.y)/(sdl.clip.h-1)*sdl.mouse.sensitivity/100.0f,
+						  sdl.mouse.locked);
 }
 
 static void HandleMouseButton(SDL_MouseButtonEvent * button) {
-
-	int c;
-	int bx = button->x;
-	int by = button->y;
-
-if (!sdl.window.rotateright) {
-	c = by;
-	by = bx;
-	bx = 320-1-c;
-} else {
-	c = by;
-	by = 240-1-bx;
-	bx = c;
-}
-
-    if ((by<=sdl.window.tzy2)&&(by>=sdl.window.tzy1)&&(bx<=sdl.window.tzx2)&&(bx>=sdl.window.tzx1)) { Force_Toolbar(button->state==SDL_PRESSED); return; }
-
-    if(by>sdl.window.toolbarstart) {
-        WM_HandleToolbar(bx, by, button->state==SDL_PRESSED);
-        return; };
-
-    if (!sdl.tpad.on)
-	Mouse_SetCursor((bx*render.src.width)/render.scale.width,(by*render.src.height)/render.scale.height,((float)bx*100)/(float)render.scale.width, ((float)by*100)/(float)render.scale.height );
-
 	switch (button->state) {
 	case SDL_PRESSED:
-
-    if (sdl.tpad.on) {
-       if (!sdl.tpad.active) {
-          sdl.tpad.active=true;
-          sdl.tpad.x=bx;
-          sdl.tpad.y=by;
-          sdl.tpad.moved=false;
-		  sdl.mouse.needticks=true;
-		  sdl.mouse.delayticks=0;
-          }
-          return;
-     }
-
-	if (sdl.mouse.noclick) return;
-
+		if (sdl.mouse.requestlock && !sdl.mouse.locked) {
+			GFX_CaptureMouse();
+			// Dont pass klick to mouse handler
+			break;
+		}
+		if (!sdl.mouse.autoenable && sdl.mouse.autolock && button->button == SDL_BUTTON_MIDDLE) {
+			GFX_CaptureMouse();
+			break;
+		}
 		switch (button->button) {
 		case SDL_BUTTON_LEFT:
 			Mouse_ButtonPressed(0);
@@ -936,23 +1296,6 @@ if (!sdl.window.rotateright) {
 		}
 		break;
 	case SDL_RELEASED:
-
-		if (sdl.tpad.on) {
-                  if (sdl.tpad.active)
-				  if (!sdl.tpad.moved) {
-				     if (sdl.tpad.rightclickdelay)
-					if (sdl.mouse.delayticks>sdl.tpad.rightclickdelay) sdl.mouse.right=true; else sdl.mouse.right=false;
-					    if (!sdl.mouse.right) Mouse_ButtonPressed(0); else Mouse_ButtonPressed(1);
-						sdl.tpad.releasedelay=sdl.tpad.clickms;
-                      }
-                sdl.tpad.active=false;
-				sdl.mouse.needticks=false;
-				sdl.mouse.delayticks=0;
-                return;
-                }
-
-        if (sdl.mouse.noclick) return;
-
 		switch (button->button) {
 		case SDL_BUTTON_LEFT:
 			Mouse_ButtonReleased(0);
@@ -985,21 +1328,81 @@ void GFX_Events() {
 		MAPPER_UpdateJoysticks();
 	}
 #endif
-	WM_Update();
 	while (SDL_PollEvent(&event)) {
 		switch (event.type) {
 		case SDL_ACTIVEEVENT:
 			if (event.active.state & SDL_APPINPUTFOCUS) {
 				if (event.active.gain) {
+					if (sdl.desktop.fullscreen && !sdl.mouse.locked)
+						GFX_CaptureMouse();
+					SetPriority(sdl.priority.focus);
 					CPU_Disable_SkipAutoAdjust();
 				} else {
-						if (sdl.window.fullscreen) {
+					if (sdl.mouse.locked) {
+#ifdef WIN32
+						if (sdl.desktop.fullscreen) {
 							VGA_KillDrawing();
-							sdl.window.fullscreen=false;
+							sdl.desktop.fullscreen=false;
 							GFX_ResetScreen();
 						}
+#endif
+						GFX_CaptureMouse();
+					}
+					SetPriority(sdl.priority.nofocus);
 					GFX_LosingFocus();
 					CPU_Enable_SkipAutoAdjust();
+				}
+			}
+
+			/* Non-focus priority is set to pause; check to see if we've lost window or input focus
+			 * i.e. has the window been minimised or made inactive?
+			 */
+			if (sdl.priority.nofocus == PRIORITY_LEVEL_PAUSE) {
+				if ((event.active.state & (SDL_APPINPUTFOCUS | SDL_APPACTIVE)) && (!event.active.gain)) {
+					/* Window has lost focus, pause the emulator.
+					 * This is similar to what PauseDOSBox() does, but the exit criteria is different.
+					 * Instead of waiting for the user to hit Alt-Break, we wait for the window to
+					 * regain window or input focus.
+					 */
+					bool paused = true;
+					SDL_Event ev;
+
+					GFX_SetTitle(-1,-1,true);
+					KEYBOARD_ClrBuffer();
+//					SDL_Delay(500);
+//					while (SDL_PollEvent(&ev)) {
+						// flush event queue.
+//					}
+
+					while (paused) {
+						// WaitEvent waits for an event rather than polling, so CPU usage drops to zero
+						SDL_WaitEvent(&ev);
+
+						switch (ev.type) {
+						case SDL_QUIT: 
+							// FIXME
+							printf("bad modification!!!");
+							exit(1);
+							break;
+							//throw(0); break; // a bit redundant at linux at least as the active events gets before the quit event.
+						case SDL_ACTIVEEVENT:     // wait until we get window focus back
+							if (ev.active.state & (SDL_APPINPUTFOCUS | SDL_APPACTIVE)) {
+								// We've got focus back, so unpause and break out of the loop
+								if (ev.active.gain) {
+									paused = false;
+									GFX_SetTitle(-1,-1,false);
+								}
+
+								/* Now poke a "release ALT" command into the keyboard buffer
+								 * we have to do this, otherwise ALT will 'stick' and cause
+								 * problems with the app running in the DOSBox.
+								 */
+								KEYBOARD_AddKey(KBD_leftalt, false);
+								KEYBOARD_AddKey(KBD_rightalt, false);
+							}
+							break;
+						}
+					}
 				}
 			}
 			break;
@@ -1007,39 +1410,30 @@ void GFX_Events() {
 			HandleMouseMotion(&event.motion);
 			break;
 		case SDL_MOUSEBUTTONDOWN:
-			HandleMouseMotion(&event.motion);
-            		HandleMouseButton(&event.button);
-            		break;
 		case SDL_MOUSEBUTTONUP:
-			HandleMouseMotion(&event.motion);
 			HandleMouseButton(&event.button);
 			break;
+		case SDL_VIDEORESIZE:
+//			HandleVideoResize(&event.resize);
+			break;
 		case SDL_QUIT:
-            // FIXME
+			// FIXME
             printf("bad modification!!!");
             exit(1);
 			// throw(0);
 			break;
+		case SDL_VIDEOEXPOSE:
+			if (sdl.draw.callback) sdl.draw.callback( GFX_CallBackRedraw );
+			break;
+#ifdef WIN32
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
-		        /* Rotate D-Pad */
-			if (!sdl.window.rotateright)
-			{
-				if (event.key.keysym.sym==SDLK_LEFT) event.key.keysym.sym=SDLK_UP; else
-				if (event.key.keysym.sym==SDLK_RIGHT) event.key.keysym.sym=SDLK_DOWN; else
-				if (event.key.keysym.sym==SDLK_UP) event.key.keysym.sym=SDLK_RIGHT; else
-				if (event.key.keysym.sym==SDLK_DOWN) event.key.keysym.sym=SDLK_LEFT;
-			} else {
-				if (event.key.keysym.sym==SDLK_LEFT) event.key.keysym.sym=SDLK_DOWN; else
-				if (event.key.keysym.sym==SDLK_RIGHT) event.key.keysym.sym=SDLK_UP; else
-				if (event.key.keysym.sym==SDLK_UP) event.key.keysym.sym=SDLK_LEFT; else
-				if (event.key.keysym.sym==SDLK_DOWN) event.key.keysym.sym=SDLK_RIGHT;
-			}
 			// ignore event alt+tab
 			if (event.key.keysym.sym==SDLK_LALT) sdl.laltstate = event.key.type;
 			if (event.key.keysym.sym==SDLK_RALT) sdl.raltstate = event.key.type;
 			if (((event.key.keysym.sym==SDLK_TAB)) &&
 				((sdl.laltstate==SDL_KEYDOWN) || (sdl.raltstate==SDL_KEYDOWN))) break;
+#endif
 		default:
 			void MAPPER_CheckEvent(SDL_Event * event);
 			MAPPER_CheckEvent(&event);
@@ -1047,10 +1441,26 @@ void GFX_Events() {
 	}
 }
 
+#if defined (WIN32)
+static BOOL WINAPI ConsoleEventHandler(DWORD event) {
+	switch (event) {
+	case CTRL_SHUTDOWN_EVENT:
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_CLOSE_EVENT:
+	case CTRL_BREAK_EVENT:
+		raise(SIGTERM);
+		return TRUE;
+	case CTRL_C_EVENT:
+	default: //pass to the next handler
+		return FALSE;
+	}
+}
+#endif
+
+
 /* static variable to show wether there is not a valid stdout.
  * Fixes some bugs when -noconsole is used in a read only directory */
 static bool no_stdout = false;
-
 void GFX_ShowMsg(char const* format,...) {
 	char buf[512];
 	va_list msg;
@@ -1073,52 +1483,146 @@ void Config_Add_SDL() {
 	Pbool = sdl_sec->Add_bool("fullscreen",Property::Changeable::Always,false);
 	Pbool->Set_help("Start dosbox directly in fullscreen.");
 
-	Pbool = sdl_sec->Add_bool("rotateright",Property::Changeable::Always,false);
-	Pbool->Set_help("Alternate screen rotation.");
+	Pbool = sdl_sec->Add_bool("fulldouble",Property::Changeable::Always,false);
+	Pbool->Set_help("Use double buffering in fullscreen.");
 
-	Pstring = sdl_sec->Add_path("mapperfile",Property::Changeable::Always,"mapper.txt");
-	Pstring->Set_help("File used to load/save the key/event mappings from.");
+	Pstring = sdl_sec->Add_string("fullresolution",Property::Changeable::Always,"original");
+	Pstring->Set_help("What resolution to use for fullscreen: original or fixed size (e.g. 1024x768).");
 
-	Pstring = sdl_sec->Add_string("kbdtoolbar",Property::Changeable::Always,"toolbar.dbk");
-	Pstring->Set_help("First toolbar.");
-	Pstring = sdl_sec->Add_string("gametoolbar",Property::Changeable::Always,"game.dbk");
-	Pstring->Set_help("Second toolbar.");
-	Pstring = sdl_sec->Add_string("settoolbar",Property::Changeable::Always,"set.dbk");
-	Pstring->Set_help("Third toolbar. Note: frameskip and cycles values are drawn there.");
+	Pstring = sdl_sec->Add_string("windowresolution",Property::Changeable::Always,"original");
+	Pstring->Set_help("Scale the window to this size IF the output device supports hardware scaling.");
 
-	Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,false);
-	Pbool->Set_help("Avoid usage of symkeys, might not work on all operating systems.");
+	const char* outputs[] = {
+		"surface", "overlay",
+#if C_OPENGL
+		"opengl", "openglnb",
+#endif
+#if (HAVE_DDRAW_H) && defined(WIN32)
+		"ddraw",
+#endif
+		0 };
+	Pstring = sdl_sec->Add_string("output",Property::Changeable::Always,"surface");
+	Pstring->Set_help("What video system to use for output.");
+	Pstring->Set_values(outputs);
+
+	Pbool = sdl_sec->Add_bool("autolock",Property::Changeable::Always,true);
+	Pbool->Set_help("Mouse will automatically lock, if you click on the screen.");
 
 	Pint = sdl_sec->Add_int("sensitivity",Property::Changeable::Always,100);
 	Pint->SetMinMax(1,1000);
 	Pint->Set_help("Mouse sensitivity.");
 
-	Pbool = sdl_sec->Add_bool("touchpadmouse",Property::Changeable::Always,false);
-	Pbool->Set_help("Emulate mouse with stylus moves on screen. Can fix mouse behavior in games that expect only relative mouse movement.");
+	Pbool = sdl_sec->Add_bool("waitonerror",Property::Changeable::Always, true);
+	Pbool->Set_help("Wait before closing the console if dosbox has an error.");
 
-	Pint = sdl_sec->Add_int("clickms",Property::Changeable::Always,50);
-	Pint->SetMinMax(10,500);
-	Pint->Set_help("When in touchpad mode, left-click is sent after single-tap. This sets the delay in milliseconds between emulated mouse button down and up events.");
+	Pmulti = sdl_sec->Add_multi("priority", Property::Changeable::Always, ",");
+	Pmulti->SetValue("higher,normal");
+	Pmulti->Set_help("Priority levels for dosbox. Second entry behind the comma is for when dosbox is not focused/minimized. (pause is only valid for the second entry)");
 
-	Pint = sdl_sec->Add_int("rightclickdelay",Property::Changeable::Always,700);
-	Pint->SetMinMax(0,10000);
-	Pint->Set_help("Touchpad mode. If you tap and hold stylus for this milliseconds, right-click will be send instead of left. 0 to disable.");
+	const char* actt[] = { "lowest", "lower", "normal", "higher", "highest", "pause", 0};
+	Pstring = Pmulti->GetSection()->Add_string("active",Property::Changeable::Always,"higher");
+	Pstring->Set_values(actt);
 
-	Pbool = sdl_sec->Add_bool("dpadmouse",Property::Changeable::Always,false);
-	Pbool->Set_help("Emulate mouse with D-Pad. Make sure to set corresponding mapper values for this to work. Up, down, left and right keys are autorotated.");
+	const char* inactt[] = { "lowest", "lower", "normal", "higher", "highest", "pause", 0};
+	Pstring = Pmulti->GetSection()->Add_string("inactive",Property::Changeable::Always,"normal");
+	Pstring->Set_values(inactt);
 
-	Pbool = sdl_sec->Add_bool("forcetoolbar",Property::Changeable::Always,false);
-	Pbool->Set_help("Sometimes where's no space on screen to fit even a part of toolbar. This forces it to display. Also a key and a zone can be set for toggling.");
+	Pstring = sdl_sec->Add_path("mapperfile",Property::Changeable::Always,"mapper.txt");
+	Pstring->Set_help("File used to load/save the key/event mappings from.");
 
-	Pbool = sdl_sec->Add_bool("forcetransparent",Property::Changeable::Always,true);
-	Pbool->Set_help("Forced toolbar area, overlapping active screen part will be semitransparent.");
+	Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,true);
+	Pbool->Set_help("Avoid usage of symkeys, might not work on all operating systems.");
+}
 
-	Pstring = sdl_sec->Add_string("forcezone",Property::Changeable::Always,"0,0,10,5");
-	Pstring->Set_help("X, Y, width and height of 'force toolbar display' tapzone. No spaces please. See also hand_force_tlbr setting in mapper.txt");
+static void show_warning(char const * const message) {
+	bool textonly = true;
+#ifdef WIN32
+	textonly = false;
+	if ( !sdl.inited && SDL_Init(SDL_INIT_VIDEO|SDL_INIT_NOPARACHUTE) < 0 ) textonly = true;
+	sdl.inited = true;
+#endif
+	printf(message);
+	if(textonly) return;
+	if(!sdl.surface) sdl.surface = SDL_SetVideoMode(640,400,0,0);
+	if(!sdl.surface) return;
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+	Bit32u rmask = 0xff000000;
+	Bit32u gmask = 0x00ff0000;
+	Bit32u bmask = 0x0000ff00;
+#else
+	Bit32u rmask = 0x000000ff;
+	Bit32u gmask = 0x0000ff00;                    
+	Bit32u bmask = 0x00ff0000;
+#endif
+	SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
+	if (!splash_surf) return;
 
-	Pint = sdl_sec->Add_int("forceheight",Property::Changeable::Always,40);
-	Pint->Set_help("Forced toolbar will have this height.");
+	int x = 120,y = 20;
+	std::string m(message),m2;
+	std::string::size_type a,b,c,d;
+   
+	while(m.size()) { //Max 50 characters. break on space before or on a newline
+		c = m.find('\n');
+		d = m.rfind(' ',50);
+		if(c>d) a=b=d; else a=b=c;
+		if( a != std::string::npos) b++; 
+		m2 = m.substr(0,a); m.erase(0,b);
+		OutputString(x,y,m2.c_str(),0xffffffff,0,splash_surf);
+		y += 20;
+	}
+   
+	SDL_BlitSurface(splash_surf, NULL, sdl.surface, NULL);
+	SDL_Flip(sdl.surface);
+	SDL_Delay(10000);
+}
+   
+static void launcheditor() {
+	std::string path,file;
+	Cross::CreatePlatformConfigDir(path);
+	Cross::GetPlatformConfigName(file);
+	path += file;
+	FILE* f = fopen(path.c_str(),"r");
+	if(!f && !control->PrintConfig(path.c_str())) {
+		printf("tried creating %s. but failed.\n",path.c_str());
+		exit(1);
+	}
+	if(f) fclose(f);
+/*	if(edit.empty()) {
+		printf("no editor specified.\n");
+		exit(1);
+	}*/
+	std::string edit;
+	while(control->cmdline->FindString("-editconf",edit,true)) //Loop until one succeeds
+		execlp(edit.c_str(),edit.c_str(),path.c_str(),(char*) 0);
+	//if you get here the launching failed!
+	printf("can't find editor(s) specified at the command line.\n");
+	exit(1);
+}
+static void launchcaptures(std::string const& edit) {
+	std::string path,file;
+	Section* t = control->GetSection("dosbox");
+	if(t) file = t->GetPropValue("captures");
+	if(!t || file == NO_SUCH_PROPERTY) {
+		printf("Config system messed up.\n");
+		exit(1);
+	}
+	Cross::CreatePlatformConfigDir(path);
+	path += file;
+	Cross::CreateDir(path);
+	struct stat cstat;
+	if(stat(path.c_str(),&cstat) || (cstat.st_mode & S_IFDIR) == 0) {
+		printf("%s doesn't exists or isn't a directory.\n",path.c_str());
+		exit(1);
+	}
+/*	if(edit.empty()) {
+		printf("no editor specified.\n");
+		exit(1);
+	}*/
 
+	execlp(edit.c_str(),edit.c_str(),path.c_str(),(char*) 0);
+	//if you get here the launching failed!
+	printf("can't find filemanager %s\n",edit.c_str());
+	exit(1);
 }
 
 static void printconfiglocation() {
@@ -1126,6 +1630,7 @@ static void printconfiglocation() {
 	Cross::CreatePlatformConfigDir(path);
 	Cross::GetPlatformConfigName(file);
 	path += file;
+     
 	FILE* f = fopen(path.c_str(),"r");
 	if(!f && !control->PrintConfig(path.c_str())) {
 		printf("tried creating %s. but failed",path.c_str());
@@ -1136,14 +1641,27 @@ static void printconfiglocation() {
 	exit(0);
 }
 
+static void eraseconfigfile() {
+	FILE* f = fopen("dosbox.conf","r");
+	if(f) {
+		fclose(f);
+		show_warning("Warning: dosbox.conf exists in current working directory.\nThis will override the configuration file at runtime.\n");
+	}
+	std::string path,file;
+	Cross::GetPlatformConfigDir(path);
+	Cross::GetPlatformConfigName(file);
+	path += file;
+	f = fopen(path.c_str(),"r");
+	if(!f) exit(0);
+	fclose(f);
+	unlink(path.c_str());
+	exit(0);
+}
+
 
 #if 0
 //extern void UI_Init(void);
-#undef main
 int main(int argc, char* argv[]) {
-
-getcwd(mypath,MAX_PATH);
-
 	try {
 		CommandLine com_line(argc,argv);
 		Config myconf(&com_line);
@@ -1152,15 +1670,33 @@ getcwd(mypath,MAX_PATH);
 		Config_Add_SDL();
 		DOSBOX_Init();
 
-		/* Redirect standard input and standard output */
-		sprintf(fullname,"%s\\%s",mypath,STDOUT_FILE);
-		if(freopen(fullname, "w", stdout) == NULL)
-			no_stdout = true; // No stdout so don't write messages
-		sprintf(fullname,"%s\\%s",mypath,STDERR_FILE);
-		freopen(fullname, "w", stderr);
-		setvbuf(stdout, NULL, _IOLBF, BUFSIZ);	/* Line buffered */
-		//setbuf(stderr, NULL);					/* No buffering */
+		std::string editor;
+		if(control->cmdline->FindString("-editconf",editor,false)) launcheditor();
+		if(control->cmdline->FindString("-opencaptures",editor,true)) launchcaptures(editor);
+		if(control->cmdline->FindExist("-eraseconf")) eraseconfigfile();
 
+		/* Can't disable the console with debugger enabled */
+#if defined(WIN32) && !(C_DEBUG)
+		if (control->cmdline->FindExist("-noconsole")) {
+			FreeConsole();
+			/* Redirect standard input and standard output */
+			if(freopen(STDOUT_FILE, "w", stdout) == NULL)
+				no_stdout = true; // No stdout so don't write messages
+			freopen(STDERR_FILE, "w", stderr);
+			setvbuf(stdout, NULL, _IOLBF, BUFSIZ);	/* Line buffered */
+			setbuf(stderr, NULL);					/* No buffering */
+		} else {
+			if (AllocConsole()) {
+				fclose(stdin);
+				fclose(stdout);
+				fclose(stderr);
+				freopen("CONIN$","r",stdin);
+				freopen("CONOUT$","w",stdout);
+				freopen("CONOUT$","w",stderr);
+			}
+			SetConsoleTitle("DOSBox Status Window");
+		}
+#endif  //defined(WIN32) && !(C_DEBUG)
 		if (control->cmdline->FindExist("-version") ||
 		    control->cmdline->FindExist("--version") ) {
 			printf("\nDOSBox version %s, copyright 2002-2009 DOSBox Team.\n\n",VERSION);
@@ -1176,14 +1712,30 @@ getcwd(mypath,MAX_PATH);
 		DEBUG_SetupConsole();
 #endif
 
+#if defined(WIN32)
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE) ConsoleEventHandler,TRUE);
+#endif
+
+#ifdef OS2
+        PPIB pib;
+        PTIB tib;
+        DosGetInfoBlocks(&tib, &pib);
+        if (pib->pib_ultype == 2) pib->pib_ultype = 3;
+        setbuf(stdout, NULL);
+        setbuf(stderr, NULL);
+#endif
+
 	/* Display Welcometext in the console */
 	LOG_MSG("DOSBox version %s",VERSION);
 	LOG_MSG("Copyright 2002-2009 DOSBox Team, published under GNU GPL.");
 	LOG_MSG("---");
 
 	/* Init SDL */
-	if ( SDL_Init( SDL_INIT_AUDIO|SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_NOPARACHUTE
+	putenv(const_cast<char*>("SDL_DISABLE_LOCK_KEYS=1")); //Workaround debian/ubuntu fixes for SDL.
+	if ( SDL_Init( SDL_INIT_AUDIO|SDL_INIT_VIDEO|SDL_INIT_TIMER|SDL_INIT_CDROM
+		|SDL_INIT_NOPARACHUTE
 		) < 0 ) E_Exit("Can't init SDL %s",SDL_GetError());
+	sdl.inited = true;
 
 #ifndef DISABLE_JOYSTICK
 	//Initialise Joystick seperately. This way we can warn when it fails instead
@@ -1191,11 +1743,38 @@ getcwd(mypath,MAX_PATH);
 	if( SDL_InitSubSystem(SDL_INIT_JOYSTICK) < 0 ) LOG_MSG("Failed to init joystick support");
 #endif
 
-	WM_PreInit();
-
 	sdl.laltstate = SDL_KEYUP;
 	sdl.raltstate = SDL_KEYUP;
 
+#if defined (WIN32)
+#if SDL_VERSION_ATLEAST(1, 2, 10)
+		sdl.using_windib=true;
+#else
+		sdl.using_windib=false;
+#endif
+		char sdl_drv_name[128];
+		if (getenv("SDL_VIDEODRIVER")==NULL) {
+			if (SDL_VideoDriverName(sdl_drv_name,128)!=NULL) {
+				sdl.using_windib=false;
+				if (strcmp(sdl_drv_name,"directx")!=0) {
+					SDL_QuitSubSystem(SDL_INIT_VIDEO);
+					putenv("SDL_VIDEODRIVER=directx");
+					if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) {
+						putenv("SDL_VIDEODRIVER=windib");
+						if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) E_Exit("Can't init SDL Video %s",SDL_GetError());
+						sdl.using_windib=true;
+					}
+				}
+			}
+		} else {
+			char* sdl_videodrv = getenv("SDL_VIDEODRIVER");
+			if (strcmp(sdl_videodrv,"directx")==0) sdl.using_windib = false;
+			else if (strcmp(sdl_videodrv,"windib")==0) sdl.using_windib = true;
+		}
+		if (SDL_VideoDriverName(sdl_drv_name,128)!=NULL) {
+			if (strcmp(sdl_drv_name,"windib")==0) LOG_MSG("SDL_Init: Starting up with SDL windib video driver.\n          Try to update your video card and directx drivers!");
+		}
+#endif
 	sdl.num_joysticks=SDL_NumJoysticks();
 
 	/* Parse configuration files */
@@ -1206,9 +1785,7 @@ getcwd(mypath,MAX_PATH);
 		if (control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
 
 	//if none found => parse localdir conf
-
-	sprintf(fullname,"%s\\%s",mypath,"dosbox.conf");
-	config_file = fullname;
+	config_file = "dosbox.conf";
 	if (!parsed_anyconfigfile && control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
 
 	//if none found => parse userlevel conf
@@ -1216,8 +1793,7 @@ getcwd(mypath,MAX_PATH);
 		config_file.clear();
 		Cross::GetPlatformConfigDir(config_path);
 		Cross::GetPlatformConfigName(config_file);
-		sprintf(fullname,"%s\\%s",mypath,config_file.c_str());
-		config_path = fullname;
+		config_path += config_file;
 		if(control->ParseConfigFile(config_path.c_str())) parsed_anyconfigfile = true;
 	}
 
@@ -1226,8 +1802,7 @@ getcwd(mypath,MAX_PATH);
 		config_file.clear();
 		Cross::CreatePlatformConfigDir(config_path);
 		Cross::GetPlatformConfigName(config_file);
-		sprintf(fullname,"%s\\%s",mypath,config_file.c_str());
-		config_path = fullname;
+		config_path += config_file;
 		if(control->PrintConfig(config_path.c_str())) {
 			LOG_MSG("CONFIG: Generating default configuration.\nWriting it to %s",config_path.c_str());
 			//Load them as well. Makes relative paths much easier
@@ -1241,13 +1816,15 @@ getcwd(mypath,MAX_PATH);
 #if (ENVIRON_LINKED)
 		control->ParseEnv(environ);
 #endif
+//		UI_Init();
+//		if (control->cmdline->FindExist("-startui")) UI_Run(false);
 		/* Init all the sections */
 		control->Init();
 		/* Some extra SDL Functions */
 		Section_prop * sdl_sec=static_cast<Section_prop *>(control->GetSection("sdl"));
 
 		if (control->cmdline->FindExist("-fullscreen") || sdl_sec->Get_bool("fullscreen")) {
-			if(!sdl.window.fullscreen) { //only switch if not allready in fullscreen
+			if(!sdl.desktop.fullscreen) { //only switch if not allready in fullscreen
 				GFX_SwitchFullScreen();
 			}
 		}
@@ -1261,6 +1838,17 @@ getcwd(mypath,MAX_PATH);
 	} catch (char * error) {
 		GFX_ShowMsg("Exit to error: %s",error);
 		fflush(NULL);
+		if(sdl.wait_on_error) {
+			//TODO Maybe look for some way to show message in linux?
+#if (C_DEBUG)
+			GFX_ShowMsg("Press enter to continue");
+			fflush(NULL);
+			fgetc(stdin);
+#elif defined(WIN32)
+			Sleep(5000);
+#endif
+		}
+
 	}
 	catch (int){
 		;//nothing pressed killswitch
@@ -1277,6 +1865,11 @@ getcwd(mypath,MAX_PATH);
 
 	SDL_Quit();//Let's hope sdl will quit as well when it catches an exception
 	return 0;
-};
+}
+#endif 
 
-#endif
+void GFX_GetSize(int &width, int &height, bool &fullscreen) {
+	width = sdl.draw.width;
+	height = sdl.draw.height;
+	fullscreen = sdl.desktop.fullscreen;
+}

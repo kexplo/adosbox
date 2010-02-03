@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,15 +43,11 @@ enum KBD_KEYS {
 	KBD_kp1,KBD_kp2,KBD_kp3,KBD_kp4,KBD_kp5,KBD_kp6,KBD_kp7,KBD_kp8,KBD_kp9,KBD_kp0,
 	KBD_kpdivide,KBD_kpmultiply,KBD_kpminus,KBD_kpplus,KBD_kpenter,KBD_kpperiod,
 
-	KBD_LAST,
 	
-	KBD_CCI,KBD_CCD,KBD_IFS,KBD_DFS,KBD_RMC,KBD_MNC,KBD_NT,KBD_PT,KBD_EXIT,KBD_LMC,KBD_SC,KBD_MMC
-
+	KBD_LAST
 };
 
 void KEYBOARD_ClrBuffer(void);
 void KEYBOARD_AddKey(KBD_KEYS keytype,bool pressed);
-
-#define KBD_LOCKKEY      0x80
 
 #endif

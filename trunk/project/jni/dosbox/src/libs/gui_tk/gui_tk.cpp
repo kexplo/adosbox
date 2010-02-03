@@ -1225,7 +1225,7 @@ void Frame::paint(Drawable &d) const {
 	d.drawLine((label.empty()?8:f->getWidth(label)+14),top,width-2,top);
 	d.drawLine(2,height-3,width-3,height-3);
 	d.drawLine(width-3,top+1);
-
+	
 	d.setColor(Color::Light3D);
 	d.drawLine(2,height-3,2,top+1);
 	d.drawLine(8,top+1);

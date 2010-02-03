@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: decoder_basic.h,v 1.13 2008/09/19 16:48:02 c2woody Exp $ */
+/* $Id: decoder_basic.h,v 1.15 2009/05/27 09:15:41 qbix79 Exp $ */
 
 
 /*
@@ -31,7 +31,7 @@
 // instructions that use one operand
 enum SingleOps {
 	SOP_INC,SOP_DEC,
-	SOP_NOT,SOP_NEG,
+	SOP_NOT,SOP_NEG
 };
 
 // instructions that use two operand
@@ -42,7 +42,7 @@ enum DualOps {
 	DOP_AND,DOP_OR,
 	DOP_TEST,
 	DOP_MOV,
-	DOP_XCHG,
+	DOP_XCHG
 };
 
 // shift and rotate functions
@@ -50,7 +50,7 @@ enum ShiftOps {
 	SHIFT_ROL,SHIFT_ROR,
 	SHIFT_RCL,SHIFT_RCR,
 	SHIFT_SHL,SHIFT_SHR,
-	SHIFT_SAL,SHIFT_SAR,
+	SHIFT_SAL,SHIFT_SAR
 };
 
 // branch conditions
@@ -69,7 +69,7 @@ enum StringOps {
 	STR_LODSB=12,STR_LODSW,STR_LODSD,
 	STR_STOSB=16,STR_STOSW,STR_STOSD,
 	STR_SCASB=20,STR_SCASW,STR_SCASD,
-	STR_CMPSB=24,STR_CMPSW,STR_CMPSD,
+	STR_CMPSB=24,STR_CMPSW,STR_CMPSD
 };
 
 // repeat prefix type (for string operations)
@@ -84,7 +84,7 @@ enum LoopTypes {
 
 // rotate operand type
 enum grp2_types {
-	grp2_1,grp2_imm,grp2_cl,
+	grp2_1,grp2_imm,grp2_cl
 };
 
 // opcode mapping for group1 instructions
@@ -112,10 +112,10 @@ static struct DynDecode {
 
 	// the active page (containing the current byte of the instruction stream)
 	struct {
-		Bit8u * wmap;	// write map that indicates code presence for every byte of this page
-		Bit8u * invmap;	// invalidation map
 		CodePageHandlerDynRec * code;
 		Bitu index;		// index to the current byte of the instruction stream
+		Bit8u * wmap;	// write map that indicates code presence for every byte of this page
+		Bit8u * invmap;	// invalidation map
 		Bitu first;		// page number 
 	} page;
 
@@ -217,30 +217,24 @@ static Bit8u decode_fetchb(void) {
 	if (GCC_UNLIKELY(decode.page.index>=4096)) {
 		decode_advancepage();
 	}
-	decode.page.wmap[decode.page.index++]+=0x01;
-	//decode.page.index++;
-	//decode.code+=1;
-	//LOG_MSG("B: %d",decode.page.index);
-	return mem_readb_inline(decode.code++);
+	decode.page.wmap[decode.page.index]+=0x01;
+	decode.page.index++;
+	decode.code+=1;
+	return mem_readb(decode.code-1);
 }
 // fetch the next word of the instruction stream
-GCC_ATTRIBUTE(noinline) static Bit16u decode_fetchw(void) {
+static Bit16u decode_fetchw(void) {
 	if (GCC_UNLIKELY(decode.page.index>=4095)) {
    		Bit16u val=decode_fetchb();
 		val|=decode_fetchb() << 8;
 		return val;
 	}
-	//LOG_MSG("W: %d",decode.page.index);
-	if (decode.page.index&1) {
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-	} else 
-	{ *(Bit16u *)&decode.page.wmap[decode.page.index]+=0x0101; decode.page.index+=2; };
-	decode.code+=2;
+	*(Bit16u *)&decode.page.wmap[decode.page.index]+=0x0101;
+	decode.code+=2;decode.page.index+=2;
 	return mem_readw(decode.code-2);
 }
 // fetch the next dword of the instruction stream
-GCC_ATTRIBUTE(noinline) static Bit32u decode_fetchd(void) {
+static Bit32u decode_fetchd(void) {
 	if (GCC_UNLIKELY(decode.page.index>=4093)) {
    		Bit32u val=decode_fetchb();
 		val|=decode_fetchb() << 8;
@@ -249,20 +243,12 @@ GCC_ATTRIBUTE(noinline) static Bit32u decode_fetchd(void) {
 		return val;
         /* Advance to the next page */
 	}
-	LOG_MSG("D: %d",decode.page.index);
-	if (decode.page.index&3) {
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-               *(Bit8u *)&decode.page.wmap[decode.page.index++]+=0x01;
-        } else
-	{ *(Bit32u *)&decode.page.wmap[decode.page.index]+=0x01010101; decode.page.index+=4; };
-	decode.code+=4;
+	*(Bit32u *)&decode.page.wmap[decode.page.index]+=0x01010101;
+	decode.code+=4;decode.page.index+=4;
 	return mem_readd(decode.code-4);
 }
 
-//#define START_WMMEM 64
-#define START_WMMEM 64 //0x200
+#define START_WMMEM 64
 
 // adjust writemap mask to care for map holes due to special
 // codefetch functions
@@ -293,20 +279,8 @@ static void INLINE decode_increase_wmapmask(Bitu size) {
 	// update mask entries
 	switch (size) {
 		case 1 : activecb->cache.wmapmask[mapidx]+=0x01; break;
-		case 2 :
-			if (mapidx&1) {
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx++])+=0x01; 
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx])+=0x01; 
-			} else  (*(Bit16u*)&activecb->cache.wmapmask[mapidx])+=0x0101; 
-			break;
-		case 4 : 
-			if (mapidx&3) {
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx])+=0x01; 
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx++])+=0x01; 
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx++])+=0x01; 
-				(*(Bit8u*)&activecb->cache.wmapmask[mapidx++])+=0x01; 
-			} else  (*(Bit32u*)&activecb->cache.wmapmask[mapidx])+=0x01010101; 
-			break;
+		case 2 : (*(Bit16u*)&activecb->cache.wmapmask[mapidx])+=0x0101; break;
+		case 4 : (*(Bit32u*)&activecb->cache.wmapmask[mapidx])+=0x01010101; break;
 	}
 }
 
@@ -595,7 +569,7 @@ static DRC_PTR_SIZE_IM INLINE gen_call_function_mm(void * func,Bitu op1,Bitu op2
 
 
 
-enum save_info_type {exception, cycle_check, string_break};
+enum save_info_type {db_exception, cycle_check, string_break};
 
 
 // function that is called on exceptions
@@ -639,7 +613,7 @@ static void dyn_fill_blocks(void) {
 	for (Bitu sct=0; sct<used_save_info_dynrec; sct++) {
 		gen_fill_branch_long(save_info_dynrec[sct].branch_pos);
 		switch (save_info_dynrec[sct].type) {
-			case exception:
+			case db_exception:
 				// code for exception handling, load cycles and call DynRunException
 				decode.cycles=save_info_dynrec[sct].cycles;
 				if (cpu.code.big) gen_call_function_II((void *)&DynRunException,save_info_dynrec[sct].eip_change,save_info_dynrec[sct].cycles);
@@ -678,7 +652,7 @@ static void dyn_check_exception(HostReg reg) {
 	// in case of an exception eip will point to the start of the current instruction
 	save_info_dynrec[used_save_info_dynrec].eip_change=decode.op_start-decode.code_start;
 	if (!cpu.code.big) save_info_dynrec[used_save_info_dynrec].eip_change&=0xffff;
-	save_info_dynrec[used_save_info_dynrec].type=exception;
+	save_info_dynrec[used_save_info_dynrec].type=db_exception;
 	used_save_info_dynrec++;
 }
 

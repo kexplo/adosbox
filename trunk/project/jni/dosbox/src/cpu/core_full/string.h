@@ -4,9 +4,6 @@
 	Bitu	add_mask;
 	Bitu	count,count_left;
 	Bits	add_index;
-	HostPt tlb_addr_di;
-	HostPt tlb_addr_si;
-
 	
 	if (inst.prefix & PREFIX_SEG) si_base=inst.seg.base;
 	else si_base=SegBase(ds);
@@ -74,15 +71,6 @@
 		}
 		break;
 	case R_STOSB:
-/*
-		tlb_addr_di=get_tlb_write(di_base+di_index);
-		if ((Bit32u)tlb_addr_di) 
-			for (;count>0;count--) {
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index)=reg_al;
-			di_index=(di_index+add_index) & add_mask;
-		}
-		else 
-*/
 		for (;count>0;count--) {
 			SaveMb(di_base+di_index,reg_al);
 			di_index=(di_index+add_index) & add_mask;
@@ -90,16 +78,6 @@
 		break;
 	case R_STOSW:
 		add_index<<=1;
-/*
-		tlb_addr_di=get_tlb_write(di_base+di_index);
-		if ((Bit32u)tlb_addr_di) 
-			for (;count>0;count--) {
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index)=reg_al;
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+1)=reg_ah;
-			di_index=(di_index+add_index) & add_mask;
-		}
-		else
-*/
 		for (;count>0;count--) {
 			SaveMw(di_base+di_index,reg_ax);
 			di_index=(di_index+add_index) & add_mask;
@@ -113,15 +91,6 @@
 		}
 		break;
 	case R_MOVSB:
-		tlb_addr_si=get_tlb_read(si_base+si_index);
-		tlb_addr_di=get_tlb_write(di_base+di_index);
-		if ((Bit32u)tlb_addr_si & (Bit32u)tlb_addr_di) 
-			for (;count>0;count--) {
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index)=*(Bit8u*)(tlb_addr_si+si_base+si_index);
-			di_index=(di_index+add_index) & add_mask;
-			si_index=(si_index+add_index) & add_mask;
-		}
-		else 
 		for (;count>0;count--) {
 			SaveMb(di_base+di_index,LoadMb(si_base+si_index));
 			di_index=(di_index+add_index) & add_mask;
@@ -130,16 +99,6 @@
 		break;
 	case R_MOVSW:
 		add_index<<=1;
-		tlb_addr_si=get_tlb_read(si_base+si_index);
-		tlb_addr_di=get_tlb_write(di_base+di_index);
-		if ((Bit32u)tlb_addr_si & (Bit32u)tlb_addr_di) 
-			for (;count>0;count--) {
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index)=*(Bit8u*)(tlb_addr_si+si_base+si_index);
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+1)=*(Bit8u*)(tlb_addr_si+si_base+si_index+1);
-			di_index=(di_index+add_index) & add_mask;
-			si_index=(si_index+add_index) & add_mask;
-		}
-		else 
 		for (;count>0;count--) {
 			SaveMw(di_base+di_index,LoadMw(si_base+si_index));
 			di_index=(di_index+add_index) & add_mask;
@@ -148,17 +107,6 @@
 		break;
 	case R_MOVSD:
 		add_index<<=2;
-		tlb_addr_si=get_tlb_read(si_base+si_index);
-		tlb_addr_di=get_tlb_write(di_base+di_index);
-		if ((Bit32u)tlb_addr_si & (Bit32u)tlb_addr_di) 
-			for (;count>0;count--) {
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+0)=*(Bit8u*)(tlb_addr_si+si_base+si_index+0);
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+1)=*(Bit8u*)(tlb_addr_si+si_base+si_index+1);
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+2)=*(Bit8u*)(tlb_addr_si+si_base+si_index+2);
-                        *(Bit8u*)(tlb_addr_di+di_base+di_index+3)=*(Bit8u*)(tlb_addr_si+si_base+si_index+3);
-			di_index=(di_index+add_index) & add_mask;
-			si_index=(si_index+add_index) & add_mask;
-		}
 		for (;count>0;count--) {
 			SaveMd(di_base+di_index,LoadMd(si_base+si_index));
 			di_index=(di_index+add_index) & add_mask;

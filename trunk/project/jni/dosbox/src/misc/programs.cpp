@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: programs.cpp,v 1.35 2009/02/01 14:19:20 qbix79 Exp $ */
+/* $Id: programs.cpp,v 1.37 2009/05/27 09:15:42 qbix79 Exp $ */
 
 #include <vector>
 #include <ctype.h>
@@ -109,12 +109,22 @@ Program::Program() {
 extern std::string full_arguments;
 
 void Program::ChangeToLongCmd() {
-	CommandLine* temp = 0;
-	//If command_slashc => then don't pass any parameters to the internal .COM files 
-	if(command_slashc) temp = new CommandLine(cmd->GetFileName(),"");
-	else temp = new CommandLine(cmd->GetFileName(),full_arguments.c_str());
-	delete cmd;
-	cmd = temp;
+	/* 
+	 * Get arguments directly from the shell instead of the psp.
+	 * this is done in securemode: (as then the arguments to mount and friends
+	 * can only be given on the shell ( so no int 21 4b) 
+	 * Securemode part is disabled as each of the internal command has already
+	 * protection for it. (and it breaks games like cdman)
+	 * it is also done for long arguments to as it is convient (as the total commandline can be longer then 127 characters.
+	 * imgmount with lot's of parameters
+	 * Length of arguments can be ~120. but switch when above 100 to be sure
+	 */
+
+	if(/*control->SecureMode() ||*/ cmd->Get_arglength() > 100) {	
+		CommandLine* temp = new CommandLine(cmd->GetFileName(),full_arguments.c_str());
+		delete cmd;
+		cmd = temp;
+	}
 	full_arguments.assign(""); //Clear so it gets even more save
 }
 

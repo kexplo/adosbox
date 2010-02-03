@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,12 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dosbox.h,v 1.31 2008/01/09 20:34:21 c2woody Exp $ */
+/* $Id: dosbox.h,v 1.32 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #ifndef DOSBOX_DOSBOX_H
 #define DOSBOX_DOSBOX_H
 
-#include <stdio.h>
 #include "config.h"
 
 void E_Exit(const char * message,...) GCC_ATTRIBUTE( __format__(__printf__, 1, 2));

@@ -156,7 +156,7 @@ typedef struct {
 		Bit8u enabled;
 	} cursor;
 	bool vret_triggered;
-} VGA_Draw ;
+} VGA_Draw;
 
 typedef struct {
 	Bit8u curmode;

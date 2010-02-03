@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,9 +29,17 @@
 #define SaveRw(reg,val)	reg=val
 #define SaveRd(reg,val)	reg=val
 
-#define Fetchbs (Bit8s)Fetchb
-#define Fetchws (Bit16s)Fetchw
-#define Fetchds (Bit32s)Fetchd
+static INLINE Bit8s Fetchbs() {
+	return Fetchb();
+}
+static INLINE Bit16s Fetchws() {
+	return Fetchw();
+}
+
+static INLINE Bit32s Fetchds() {
+	return Fetchd();
+}
+
 
 #define RUNEXCEPTION() {										\
 	CPU_Exception(cpu.exception.which,cpu.exception.error);		\
@@ -47,25 +55,29 @@
 //TODO Could probably make all byte operands fast?
 #define JumpCond16_b(COND) {						\
 	SAVEIP;											\
-	if (COND) reg_ip+=(Fetchbs()+1); else reg_ip++;				\
+	if (COND) reg_ip+=Fetchbs();					\
+	reg_ip+=1;										\
 	continue;										\
 }
 
 #define JumpCond16_w(COND) {						\
 	SAVEIP;											\
-	if (COND) reg_ip+=(Fetchws()+2); else reg_ip+=2;					\
+	if (COND) reg_ip+=Fetchws();					\
+	reg_ip+=2;										\
 	continue;										\
 }
 
 #define JumpCond32_b(COND) {						\
 	SAVEIP;											\
-	if (COND) reg_eip+=(Fetchbs()+1); else reg_ip++;				\
+	if (COND) reg_eip+=Fetchbs();					\
+	reg_eip+=1;										\
 	continue;										\
 }
 
 #define JumpCond32_d(COND) {						\
 	SAVEIP;											\
-	if (COND) reg_eip+=(Fetchds()+4); else reg_ip+=4; 				\
+	if (COND) reg_eip+=Fetchds();					\
+	reg_eip+=4;										\
 	continue;										\
 }
 

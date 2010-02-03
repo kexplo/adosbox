@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,13 +16,11 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: core_dynrec.cpp,v 1.11 2008/09/19 16:48:02 c2woody Exp $ */
+/* $Id: core_dynrec.cpp,v 1.12 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 
 #if (C_DYNREC)
-
-#define CPU_Other_Run CPU_Core_Full_Run
 
 #include <assert.h>
 #include <stdarg.h>
@@ -54,13 +52,13 @@
 #include "inout.h"
 #include "lazyflags.h"
 
-#define CACHE_MAXSIZE		(4096*4)
-#define CACHE_TOTAL		(1024*1024*4)
+#define CACHE_MAXSIZE	(4096*2)
+#define CACHE_TOTAL		(1024*1024*8)
 #define CACHE_PAGES		(512)
-#define CACHE_BLOCKS		(64*1024)
-#define CACHE_ALIGN		(32)
-#define DYN_HASH_SHIFT		(4)
-#define DYN_PAGE_HASH		(4096>>DYN_HASH_SHIFT)
+#define CACHE_BLOCKS	(128*1024)
+#define CACHE_ALIGN		(16)
+#define DYN_HASH_SHIFT	(4)
+#define DYN_PAGE_HASH	(4096>>DYN_HASH_SHIFT)
 #define DYN_LINKS		(16)
 
 #if 0
@@ -200,7 +198,7 @@ Bits CPU_Core_Dynrec_Run(void) {
 		}
 
 		// page doesn't contain code or is special
-		if (GCC_UNLIKELY(!chandler)) return CPU_Other_Run();
+		if (GCC_UNLIKELY(!chandler)) return CPU_Core_Normal_Run();
 
 		// find correct Dynamic Block to run
 		CacheBlockDynRec * block=chandler->FindCacheBlock(ip_point&4095);
@@ -214,7 +212,7 @@ Bits CPU_Core_Dynrec_Run(void) {
 				// let the normal core handle this instruction to avoid zero-sized blocks
 				Bitu old_cycles=CPU_Cycles;
 				CPU_Cycles=1;
-				Bits nc_retcode=CPU_Other_Run();
+				Bits nc_retcode=CPU_Core_Normal_Run();
 				if (!nc_retcode) {
 					CPU_Cycles=old_cycles-1;
 					continue;
@@ -229,6 +227,7 @@ run_block:
 		// now we're ready to run the dynamic code block
 //		BlockReturn ret=((BlockReturn (*)(void))(block->cache.start))();
 		BlockReturn ret=core_dynrec.runcode(block->cache.start);
+
 		switch (ret) {
 		case BR_Iret:
 #if C_HEAVY_DEBUG
@@ -272,7 +271,7 @@ run_block:
 			// handle this instruction
 			CPU_CycleLeft+=CPU_Cycles;
 			CPU_Cycles=1;
-			return CPU_Other_Run();
+			return CPU_Core_Normal_Run();
 
 #if (C_DEBUG)
 		case BR_OpcodeFull:
@@ -300,7 +299,7 @@ Bits CPU_Core_Dynrec_Trap_Run(void) {
 	cpu.trap_skip = false;
 
 	// let the normal core execute the next (only one!) instruction
-	Bits ret=CPU_Other_Run();
+	Bits ret=CPU_Core_Normal_Run();
 
 	// trap to int1 unless the last instruction deferred this
 	// (allows hardware interrupts to be served without interaction)

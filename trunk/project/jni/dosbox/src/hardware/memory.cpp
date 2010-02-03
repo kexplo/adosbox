@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: memory.cpp,v 1.55 2008/10/27 11:02:41 c2woody Exp $ */
+/* $Id: memory.cpp,v 1.56 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "mem.h"
@@ -28,16 +28,13 @@
 #include <string.h>
 
 #define PAGES_IN_BLOCK	((1024*1024)/MEM_PAGE_SIZE)
-#define SAFE_MEMORY	8
-#define MAX_MEMORY	16
+#define SAFE_MEMORY	32
+#define MAX_MEMORY	64
 #define MAX_PAGE_ENTRIES (MAX_MEMORY*1024*1024/4096)
 #define LFB_PAGES	512
 #define MAX_LINKS	((MAX_MEMORY*1024/4)+4096)		//Hopefully enough
 
-extern void * wm_malloc(long unsigned int size);
-extern void wm_free(void* addr);
-
-typedef struct LinkBlock {
+struct LinkBlock {
 	Bitu used;
 	Bit32u pages[MAX_LINKS];
 };
@@ -431,12 +428,12 @@ void MEM_A20_Enable(bool enabled) {
 
 /* Memory access functions */
 Bit16u mem_unalignedreadw(PhysPt address) {
-	return mem_readb_inline(address++) |
-		mem_readb_inline(address) << 8;
+	return mem_readb_inline(address) |
+		mem_readb_inline(address+1) << 8;
 }
 
 Bit32u mem_unalignedreadd(PhysPt address) {
-	return mem_readb_inline(address+0) |
+	return mem_readb_inline(address) |
 		(mem_readb_inline(address+1) << 8) |
 		(mem_readb_inline(address+2) << 16) |
 		(mem_readb_inline(address+3) << 24);
@@ -444,12 +441,12 @@ Bit32u mem_unalignedreadd(PhysPt address) {
 
 
 void mem_unalignedwritew(PhysPt address,Bit16u val) {
-	mem_writeb_inline(address++,(Bit8u)val);val>>=8;
-	mem_writeb_inline(address,(Bit8u)val);
+	mem_writeb_inline(address,(Bit8u)val);val>>=8;
+	mem_writeb_inline(address+1,(Bit8u)val);
 }
 
 void mem_unalignedwrited(PhysPt address,Bit32u val) {
-	mem_writeb_inline(address+0,(Bit8u)val);val>>=8;
+	mem_writeb_inline(address,(Bit8u)val);val>>=8;
 	mem_writeb_inline(address+1,(Bit8u)val);val>>=8;
 	mem_writeb_inline(address+2,(Bit8u)val);val>>=8;
 	mem_writeb_inline(address+3,(Bit8u)val);
@@ -458,8 +455,8 @@ void mem_unalignedwrited(PhysPt address,Bit32u val) {
 
 bool mem_unalignedreadw_checked(PhysPt address, Bit16u * val) {
 	Bit8u rval1,rval2;
-	if (mem_readb_checked(address++, &rval1)) return true;
-	if (mem_readb_checked(address, &rval2)) return true;
+	if (mem_readb_checked(address+0, &rval1)) return true;
+	if (mem_readb_checked(address+1, &rval2)) return true;
 	*val=(Bit16u)(((Bit8u)rval1) | (((Bit8u)rval2) << 8));
 	return false;
 }
@@ -475,13 +472,13 @@ bool mem_unalignedreadd_checked(PhysPt address, Bit32u * val) {
 }
 
 bool mem_unalignedwritew_checked(PhysPt address,Bit16u val) {
-	if (mem_writeb_checked(address++,(Bit8u)(val & 0xff))) return true;val>>=8;
-	if (mem_writeb_checked(address,(Bit8u)(val & 0xff))) return true;
+	if (mem_writeb_checked(address,(Bit8u)(val & 0xff))) return true;val>>=8;
+	if (mem_writeb_checked(address+1,(Bit8u)(val & 0xff))) return true;
 	return false;
 }
 
 bool mem_unalignedwrited_checked(PhysPt address,Bit32u val) {
-	if (mem_writeb_checked(address+0,(Bit8u)(val & 0xff))) return true;val>>=8;
+	if (mem_writeb_checked(address,(Bit8u)(val & 0xff))) return true;val>>=8;
 	if (mem_writeb_checked(address+1,(Bit8u)(val & 0xff))) return true;val>>=8;
 	if (mem_writeb_checked(address+2,(Bit8u)(val & 0xff))) return true;val>>=8;
 	if (mem_writeb_checked(address+3,(Bit8u)(val & 0xff))) return true;
@@ -553,15 +550,15 @@ public:
 	
 		if (memsize < 1) memsize = 1;
 		/* max 63 to solve problems with certain xms handlers */
-		if (memsize > MAX_MEMORY) {
-			LOG_MSG("Maximum memory size is %d MB",MAX_MEMORY);
-			memsize = MAX_MEMORY;
+		if (memsize > MAX_MEMORY-1) {
+			LOG_MSG("Maximum memory size is %d MB",MAX_MEMORY - 1);
+			memsize = MAX_MEMORY-1;
 		}
-		if (memsize > SAFE_MEMORY) {
-			LOG_MSG("Memory sizes above %d MB are NOT recommended.",SAFE_MEMORY);
+		if (memsize > SAFE_MEMORY-1) {
+			LOG_MSG("Memory sizes above %d MB are NOT recommended.",SAFE_MEMORY - 1);
 			LOG_MSG("Stick with the default values unless you are absolutely certain.");
 		}
-		MemBase = (Bit8u*)wm_malloc(memsize*1024*1024);
+		MemBase = new Bit8u[memsize*1024*1024];
 		if (!MemBase) E_Exit("Can't allocate main memory of %d MB",memsize);
 		/* Clear the memory, as new doesn't always give zeroed memory
 		 * (Visual C debug mode). We want zeroed memory though. */
@@ -596,8 +593,7 @@ public:
 		MEM_A20_Enable(false);
 	}
 	~MEMORY(){
-	        wm_free(MemBase);
-		//delete [] MemBase;
+		delete [] MemBase;
 		delete [] memory.phandlers;
 		delete [] memory.mhandles;
 	}

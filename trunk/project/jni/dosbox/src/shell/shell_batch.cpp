@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: shell_batch.cpp,v 1.32 2009/01/19 19:55:03 qbix79 Exp $ */
+/* $Id: shell_batch.cpp,v 1.35 2009/05/27 09:15:42 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +50,9 @@ BatchFile::~BatchFile() {
 bool BatchFile::ReadLine(char * line) {
 	//Open the batchfile and seek to stored postion
 	if (!DOS_OpenFile(cmd->GetFileName(),128,&file_handle)) {
-		E_Exit("SHELL:ReadLine Can't open BatchFile %s",cmd->GetFileName());
+		LOG(LOG_MISC,LOG_ERROR)("ReadLine Can't open BatchFile %s",cmd->GetFileName());
+		delete this;
+		return false;
 	}
 	DOS_SeekFile(file_handle,&(this->location),DOS_SEEK_SET);
 
@@ -142,10 +144,11 @@ emptyline:
 bool BatchFile::Goto(char * where) {
 	//Open bat file and search for the where string
 	if (!DOS_OpenFile(cmd->GetFileName(),128,&file_handle)) {
-		E_Exit("SHELL:Goto Can't open BatchFile %s",cmd->GetFileName());
+		LOG(LOG_MISC,LOG_ERROR)("SHELL:Goto Can't open BatchFile %s",cmd->GetFileName());
+		delete this;
+		return false;
 	}
 
-	Bit32u pos=0;
 	char cmd_buffer[CMD_MAXLINE];
 	char * cmd_write;
 
@@ -180,7 +183,7 @@ again:
 			this->location = 0;
 			DOS_SeekFile(file_handle,&(this->location),DOS_SEEK_CUR);
 			DOS_CloseFile(file_handle);
-		   return true;
+			return true;
 		}
 	   
 	}

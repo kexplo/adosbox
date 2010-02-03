@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: vga_tseng.cpp,v 1.4 2008/08/06 18:32:35 c2woody Exp $ */
+/* $Id: vga_tseng.cpp,v 1.5 2009/05/27 09:15:41 qbix79 Exp $ */
 
 
 #include "dosbox.h"
@@ -357,7 +357,7 @@ void FinishSetMode_ET4K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		Bitu best = 1;
 		Bits dist = 100000000;
 		for (Bitu i=0; i<16; i++) {
-			if (abs((long int)(target-et4k.clockFreq[i])) < dist) {
+		  if (abs((long int)(target-et4k.clockFreq[i])) < dist) {
 				best = i;
 				dist = abs((long int)(target-et4k.clockFreq[i]));
 			}
@@ -718,7 +718,7 @@ void FinishSetMode_ET3K(Bitu crtc_base, VGA_ModeExtraData* modeData) {
 		Bitu best = 1;
 		Bits dist = 100000000;
 		for (Bitu i=0; i<8; i++) {
-			if (abs((long int)(target-et3k.clockFreq[i])) < dist) {
+		  if (abs((long int)(target-et3k.clockFreq[i])) < dist) {
 				best = i;
 				dist = abs((long int)(target-et3k.clockFreq[i]));
 			}

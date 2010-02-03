@@ -16,9 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: gus.cpp,v 1.33 2009/01/14 20:50:23 c2woody Exp $ */
-
-#if 0
+/* $Id: gus.cpp,v 1.36 2009/04/27 17:11:26 qbix79 Exp $ */
 
 #include <string.h>
 #include <iomanip>
@@ -45,8 +43,6 @@ using namespace std;
 #define RAMP_FRACT (10)
 #define RAMP_FRACT_MASK ((1 << RAMP_FRACT)-1)
 
-#define USEVOLTABLE 1
-
 #define GUS_BASE myGUS.portbase
 #define GUS_RATE myGUS.rate
 #define LOG_GUS 0
@@ -56,10 +52,8 @@ static MixerChannel * gus_chan;
 static Bit8u irqtable[8] = { 0, 2, 5, 3, 7, 11, 12, 15 };
 static Bit8u dmatable[8] = { 0, 1, 3, 5, 6, 7, 0, 0 };
 static Bit8u GUSRam[1024*1024]; // 1024K of GUS Ram
-static Bit32s AutoAmp=512;
-#if USEVOLTABLE
+static Bit32s AutoAmp = 512;
 static Bit16u vol16bit[4096];
-#endif
 static Bit32u pantable[16];
 
 class GUSChannels;
@@ -95,7 +89,6 @@ struct GFGus {
 	Bit8u irq1;
 	Bit8u irq2;
 
-	char ultradir[512];
 	bool irqenabled;
 	bool ChangeIRQDMA;
 	// IRQ status register values
@@ -274,12 +267,8 @@ public:
 		templeft&=~(templeft >> 31);
 		Bit32s tempright=RampVol - PanRight;
 		tempright&=~(tempright >> 31);
-#if USEVOLTABLE
 		VolLeft=vol16bit[templeft >> RAMP_FRACT];
 		VolRight=vol16bit[tempright >> RAMP_FRACT];
-#else
-
-#endif
 	}
 	INLINE void RampUpdate(void) {
 		/* Check if ramping enabled */
@@ -456,7 +445,7 @@ static void GUS_TimerEvent(Bitu val) {
 	}
 	if (myGUS.timers[val].running) 
 		PIC_AddEvent(GUS_TimerEvent,myGUS.timers[val].delay,val);
-};
+}
 
  
 static void ExecuteGlobRegister(void) {
@@ -774,13 +763,11 @@ static void GUS_CallBack(Bitu len) {
 // Generate logarithmic to linear volume conversion tables
 static void MakeTables(void) {
 	int i;
-#if USEVOLTABLE
 	double out = (double)(1 << 13);
 	for (i=4095;i>=0;i--) {
 		vol16bit[i]=(Bit16s)out;
 		out/=1.002709201;		/* 0.0235 dB Steps */
 	}
-#endif
 	pantable[0]=0;
 	for (i=1;i<16;i++) {
 		pantable[i]=(Bit32u)(-128.0*(log((double)i/15.0)/log(2.0))*(double)(1 << RAMP_FRACT));
@@ -814,8 +801,6 @@ public:
 		myGUS.irq1 = (Bit8u)irq_val;
 		myGUS.irq2 = (Bit8u)irq_val;
 
-		strcpy(&myGUS.ultradir[0], section->Get_string("ultradir"));
-	
 		// We'll leave the MIDI interface to the MPU-401 
 		// Ditto for the Joystick 
 		// GF1 Synthesizer 
@@ -869,7 +854,7 @@ public:
 		     << (Bitu)myGUS.irq1 << "," << (Bitu)myGUS.irq2 << ends;
 		// Create autoexec.bat lines
 		autoexecline[0].Install(temp.str());
-		autoexecline[1].Install(std::string("SET ULTRADIR=")+ myGUS.ultradir);
+		autoexecline[1].Install(std::string("SET ULTRADIR=") + section->Get_string("ultradir"));
 	}
 
 
@@ -901,5 +886,3 @@ void GUS_Init(Section* sec) {
 	test = new GUS(sec);
 	sec->AddDestroyFunction(&GUS_ShutDown,true);
 }
-
-#endif

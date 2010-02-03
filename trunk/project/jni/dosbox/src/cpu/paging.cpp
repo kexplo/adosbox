@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: paging.cpp,v 1.35 2008/12/04 21:09:32 c2woody Exp $ */
+/* $Id: paging.cpp,v 1.36 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <assert.h>
@@ -35,8 +35,9 @@
 
 #define USERWRITE_PROHIBITED			((cpu.cpl&cpu.mpl)==3)
 
+
 PagingBlock paging;
-Bit8u *temp;
+
 
 Bitu PageHandler::readb(PhysPt addr) {
 	E_Exit("No byte handler for read from %d",addr);	
@@ -853,9 +854,9 @@ void PAGING_Enable(bool enabled) {
 	if (paging.enabled==enabled) return;
 	paging.enabled=enabled;
 	if (enabled) {
-		if (GCC_UNLIKELY(cpudecoder==CPU_Core_VerySimple_Run)) {
-			LOG_MSG("CPU core VerySimple won't run this game,switching to Full");
-			cpudecoder=CPU_Core_Full_Run;
+		if (GCC_UNLIKELY(cpudecoder==CPU_Core_Simple_Run)) {
+//			LOG_MSG("CPU core simple won't run this game,switching to normal");
+			cpudecoder=CPU_Core_Normal_Run;
 			CPU_CycleLeft+=CPU_Cycles;
 			CPU_Cycles=0;
 		}
@@ -885,11 +886,6 @@ public:
 };
 
 static PAGING* test;
-extern void * wm_malloc(long unsigned int size);
-extern void wm_free(void* addr);
 void PAGING_Init(Section * sec) {
-	//temp = (Bit8u*)wm_malloc(sizeof(PagingBlock));
-	//paging = *(PagingBlock*)temp;
 	test = new PAGING(sec);
-	LOG_MSG("Paging: %d",sizeof(paging));
 }

@@ -50,8 +50,8 @@ Segments Segs;
 
 Bit32s CPU_Cycles = 0;
 Bit32s CPU_CycleLeft = 0;
-Bit32s CPU_CycleMax = 300;
-Bit32s CPU_OldCycleMax = 300;
+Bit32s CPU_CycleMax = 3000;
+Bit32s CPU_OldCycleMax = 3000;
 Bit32s CPU_CyclePercUsed = 100;
 Bit32s CPU_CycleLimit = -1;
 Bit32s CPU_CycleUp = 0;
@@ -1555,8 +1555,6 @@ void CPU_SET_CRX(Bitu cr,Bitu value) {
 				LOG(LOG_CPU,LOG_NORMAL)("Protected mode");
 				PAGING_Enable((value & CR0_PAGING)>0);
 
-/* n0p - no auto mode */ 
-break;
 				if (!(CPU_AutoDetermineMode&CPU_AUTODETERMINE_MASK)) break;
 
 				if (CPU_AutoDetermineMode&CPU_AUTODETERMINE_CYCLES) {
@@ -1577,7 +1575,6 @@ break;
 				if (CPU_AutoDetermineMode&CPU_AUTODETERMINE_CORE) {
 					CPU_Core_Dynrec_Cache_Init(true);
 					cpudecoder=&CPU_Core_Dynrec_Run;
-					LOG_MSG("Switch to dynamic core");
 				}
 #endif
 				CPU_AutoDetermineMode<<=CPU_AUTODETERMINE_SHIFT;
@@ -2094,7 +2091,7 @@ void CPU_ENTER(bool use32,Bitu bytes,Bitu level) {
 	reg_esp=(reg_esp&cpu.stack.notmask)|((sp_index)&cpu.stack.mask);
 }
 
-void CPU_CycleIncrease(bool pressed) {
+static void CPU_CycleIncrease(bool pressed) {
 	if (!pressed) return;
 	if (CPU_CycleAutoAdjust) {
 		CPU_CyclePercUsed+=5;
@@ -2116,7 +2113,7 @@ void CPU_CycleIncrease(bool pressed) {
 	}
 }
 
-void CPU_CycleDecrease(bool pressed) {
+static void CPU_CycleDecrease(bool pressed) {
 	if (!pressed) return;
 	if (CPU_CycleAutoAdjust) {
 		CPU_CyclePercUsed-=5;
@@ -2209,10 +2206,8 @@ public:
 		cpu.drx[7]=0x00000400;
 
 		/* Init the cpu cores */
-/*
 		CPU_Core_Normal_Init();
 		CPU_Core_Simple_Init();
-*/
 		CPU_Core_Full_Init();
 #if (C_DYNAMIC_X86)
 		CPU_Core_Dyn_X86_Init();
@@ -2260,7 +2255,39 @@ public:
 				}
 			}
 		} else {
-			if(type =="fixed") {
+			if (type=="auto") {
+				CPU_AutoDetermineMode|=CPU_AUTODETERMINE_CYCLES;
+				CPU_CycleMax=3000;
+				CPU_OldCycleMax=3000;
+				CPU_CyclePercUsed=100;
+				for (Bitu cmdnum=0; cmdnum<=cmd.GetCount(); cmdnum++) {
+					if (cmd.FindCommand(cmdnum,str)) {
+						if (str.find('%')==str.length()-1) {
+							str.erase(str.find('%'));
+							int percval=0;
+							std::istringstream stream(str);
+							stream >> percval;
+							if ((percval>0) && (percval<=100)) CPU_CyclePercUsed=(Bit32s)percval;
+						} else if (str=="limit") {
+							cmdnum++;
+							if (cmd.FindCommand(cmdnum,str)) {
+								int cyclimit=0;
+								std::istringstream stream(str);
+								stream >> cyclimit;
+								if (cyclimit>0) CPU_CycleLimit=cyclimit;
+							}
+						} else {
+							int rmdval=0;
+							std::istringstream stream(str);
+							stream >> rmdval;
+							if (rmdval>0) {
+								CPU_CycleMax=(Bit32s)rmdval;
+								CPU_OldCycleMax=(Bit32s)rmdval;
+							}
+						}
+					}
+				}
+			} else if(type =="fixed") {
 				cmd.FindCommand(1,str);
 				int rmdval=0;
 				std::istringstream stream(str);
@@ -2278,11 +2305,15 @@ public:
 		CPU_CycleUp=section->Get_int("cycleup");
 		CPU_CycleDown=section->Get_int("cycledown");
 		std::string core(section->Get_string("core"));
-		cpudecoder=&CPU_Core_VerySimple_Run;
-		if (core == "full") {
-			cpudecoder=&CPU_Core_Full_Run;
+		cpudecoder=&CPU_Core_Normal_Run;
+		if (core == "normal") {
+			cpudecoder=&CPU_Core_Normal_Run;
 		} else if (core =="simple") {
-			cpudecoder=&CPU_Core_VerySimple_Run;
+			cpudecoder=&CPU_Core_Simple_Run;
+		} else if (core == "full") {
+			cpudecoder=&CPU_Core_Full_Run;
+		} else if (core == "auto") {
+			cpudecoder=&CPU_Core_Normal_Run;
 #if (C_DYNAMIC_X86)
 			CPU_AutoDetermineMode|=CPU_AUTODETERMINE_CORE;
 		}
@@ -2293,7 +2324,7 @@ public:
 			cpudecoder=&CPU_Core_Dyn_X86_Run;
 			CPU_Core_Dyn_X86_SetFPUMode(false);
 #elif (C_DYNREC)
-			//CPU_AutoDetermineMode|=CPU_AUTODETERMINE_CORE;
+			CPU_AutoDetermineMode|=CPU_AUTODETERMINE_CORE;
 		}
 		else if (core == "dynamic") {
 			cpudecoder=&CPU_Core_Dynrec_Run;
@@ -2314,7 +2345,6 @@ public:
 			CPU_ArchitectureType = CPU_ARCHTYPE_MIXED;
 		} else if (cputype == "386") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_386FAST;
-/*
 		} else if (cputype == "386_prefetch") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_386FAST;
 			if (core == "normal") {
@@ -2327,12 +2357,10 @@ public:
 			} else {
 				E_Exit("prefetch queue emulation requires the normal core setting.");
 			}
-*/
 		} else if (cputype == "386_slow") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_386SLOW;
 		} else if (cputype == "486_slow") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_486NEWSLOW;
-/*
 		} else if (cputype == "486_prefetch") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_486NEWSLOW;
 			if (core == "normal") {
@@ -2345,7 +2373,6 @@ public:
 			} else {
 				E_Exit("prefetch queue emulation requires the normal core setting.");
 			}
-*/
 		} else if (cputype == "pentium_slow") {
 			CPU_ArchitectureType = CPU_ARCHTYPE_PENTIUMSLOW;
 		}

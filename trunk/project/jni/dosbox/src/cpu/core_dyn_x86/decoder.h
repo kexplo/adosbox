@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: decoder.h,v 1.55 2008/05/18 13:11:14 c2woody Exp $ */
+/* $Id: decoder.h,v 1.57 2009/03/29 17:32:20 qbix79 Exp $ */
 
 #define X86_DYNFPU_DH_ENABLED
 #define X86_INLINED_MEMACCESS
@@ -277,7 +277,7 @@ static INLINE void dyn_set_eip_last(void) {
 }
 
 
-enum save_info_type {exception, cycle_check, normal, fpu_restore};
+enum save_info_type {db_exception, cycle_check, normal, fpu_restore};
 
 
 static struct {
@@ -309,7 +309,7 @@ static void dyn_check_bool_exception(DynReg * check) {
 	save_info[used_save_info].cycles=decode.cycles;
 	save_info[used_save_info].eip_change=decode.op_start-decode.code_start;
 	if (!cpu.code.big) save_info[used_save_info].eip_change&=0xffff;
-	save_info[used_save_info].type=exception;
+	save_info[used_save_info].type=db_exception;
 	used_save_info++;
 }
 
@@ -321,7 +321,7 @@ static void dyn_check_bool_exception_al(void) {
 	save_info[used_save_info].cycles=decode.cycles;
 	save_info[used_save_info].eip_change=decode.op_start-decode.code_start;
 	if (!cpu.code.big) save_info[used_save_info].eip_change&=0xffff;
-	save_info[used_save_info].type=exception;
+	save_info[used_save_info].type=db_exception;
 	used_save_info++;
 }
 
@@ -348,7 +348,7 @@ static void dyn_check_bool_exception_ne(void) {
 	save_info[used_save_info].cycles=decode.cycles;
 	save_info[used_save_info].eip_change=decode.op_start-decode.code_start;
 	if (!cpu.code.big) save_info[used_save_info].eip_change&=0xffff;
-	save_info[used_save_info].type=exception;
+	save_info[used_save_info].type=db_exception;
 	used_save_info++;
 }
 
@@ -356,7 +356,7 @@ static void dyn_fill_blocks(void) {
 	for (Bitu sct=0; sct<used_save_info; sct++) {
 		gen_fill_branch_long(save_info[sct].branch_pos);
 		switch (save_info[sct].type) {
-			case exception:
+			case db_exception:
 				dyn_loadstate(&save_info[sct].state);
 				decode.cycles=save_info[sct].cycles;
 				dyn_save_critical_regs();
@@ -2258,6 +2258,7 @@ restart_prefix:
 			dyn_check_bool_exception(DREG(TMPB));
 			dyn_flags_host_to_gen();
 			gen_releasereg(DREG(TMPB));
+			dyn_check_irqrequest();
 			break;
 		/* MOV AL,direct addresses */
 		case 0xa0:
