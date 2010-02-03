@@ -45,7 +45,7 @@
 #define CROSS_LEN 512						/* Maximum filename size */
 
 
-#if defined (WIN32) || defined (OS2) || defined (UNDER_CE)		/* Win 32 & OS/2*/
+#if defined (WIN32) || defined (OS2)				/* Win 32 & OS/2*/
 #define CROSS_FILENAME(blah) 
 #define CROSS_FILESPLIT '\\'
 #define F_OK 0
@@ -57,10 +57,8 @@
 #define CROSS_NONE	0
 #define CROSS_FILE	1
 #define CROSS_DIR	2
-#if 0
 #if defined (WIN32)
 #define ftruncate(blah,blah2) chsize(blah,blah2)
-#endif
 #endif
 
 //Solaris maybe others

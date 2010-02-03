@@ -404,7 +404,8 @@ static int SDLCALL MainThreadWrapper(void * dummy)
 	int argc = 1;
 	char * argv[] = { "sdl" };
 	chdir(SDL_CURDIR_PATH);
-	return main( argc, argv );
+	//return main( argc, argv );
+	return 1;
 };
 
 #ifndef SDL_JAVA_PACKAGE_PATH

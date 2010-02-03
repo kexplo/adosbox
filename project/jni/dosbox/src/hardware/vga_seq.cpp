@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: vga_seq.cpp,v 1.22 2008/01/09 20:34:51 c2woody Exp $ */
+/* $Id: vga_seq.cpp,v 1.24 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "inout.h"
@@ -24,15 +24,15 @@
 
 #define seq(blah) vga.seq.blah
 
-Bitu read_p3c4(Bitu port,Bitu iolen) {
+Bitu read_p3c4(Bitu /*port*/,Bitu /*iolen*/) {
 	return seq(index);
 }
 
-void write_p3c4(Bitu port,Bitu val,Bitu iolen) {
+void write_p3c4(Bitu /*port*/,Bitu val,Bitu /*iolen*/) {
 	seq(index)=val;
-};
+}
 
-void write_p3c5(Bitu port,Bitu val,Bitu iolen) {
+void write_p3c5(Bitu /*port*/,Bitu val,Bitu iolen) {
 //	LOG_MSG("SEQ WRITE reg %X val %X",seq(index),val);
 	switch(seq(index)) {
 	case 0:		/* Reset */
@@ -119,7 +119,7 @@ void write_p3c5(Bitu port,Bitu val,Bitu iolen) {
 }
 
 
-Bitu read_p3c5(Bitu port,Bitu iolen) {
+Bitu read_p3c5(Bitu /*port*/,Bitu iolen) {
 //	LOG_MSG("VGA:SEQ:Read from index %2X",seq(index));
 	switch(seq(index)) {
 	case 0:			/* Reset */

@@ -18,7 +18,7 @@
 
 /* $Id: cdrom_ioctl_win32.cpp,v 1.16 2009/01/07 22:39:18 c2woody Exp $ */
 
-#if 0 //#if defined (WIN32)
+#if defined (WIN32)
 
 // *****************************************************************
 // Windows IOCTL functions (not suitable for 95/98/Me)

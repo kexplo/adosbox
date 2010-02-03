@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,11 @@
 #ifndef DOSBOX_RENDER_H
 #define DOSBOX_RENDER_H
 
-#define RENDER_USE_ADVANCED_SCALERS 0
+// 0: complex scalers off, scaler cache off, some simple scalers off, memory requirements reduced
+// 1: complex scalers off, scaler cache off, all simple scalers on
+// 2: complex scalers off, scaler cache on
+// 3: complex scalers on
+#define RENDER_USE_ADVANCED_SCALERS 3
 
 #include "../src/gui/render_scalers.h"
 
@@ -34,7 +38,10 @@ typedef struct {
 		Bit8u blue;
 		Bit8u unused;
 	} rgb[256];
-		Bit16u lut[256];
+	union {
+		Bit16u b16[256];
+		Bit32u b32[256];
+	} lut;
 	bool changed;
 	Bit8u modified[256];
 	Bitu first;
@@ -46,22 +53,32 @@ typedef struct {
 		Bitu width, start;
 		Bitu height;
 		Bitu bpp;
+		bool dblw,dblh;
+		double ratio;
 		float fps;
 	} src;
 	struct {
 		Bitu count;
 		Bitu max;
+		Bitu index;
+		Bit8u hadSkip[RENDER_SKIP_CACHE];
 	} frameskip;
 	struct {
-		Bitu width, height;
+		Bitu size;
 		scalerMode_t inMode;
+		scalerMode_t outMode;
+		scalerOperation_t op;
+		bool clearCache;
+		bool forced;
 		ScalerLineHandler_t lineHandler;
 		ScalerLineHandler_t linePalHandler;
+		ScalerComplexHandler_t complexHandler;
+		Bitu blocks, lastBlock;
 		Bitu outPitch;
 		Bit8u *outWrite;
 		Bitu cachePitch;
 		Bit8u *cacheRead;
-		Bitu inLine, outLine;
+		Bitu inHeight, inLine, outLine;
 	} scale;
 	RenderPal_t pal;
 	bool updating;

@@ -101,7 +101,6 @@
 		seg_base=SegBase(ds);
 		break;
 	}
-	//off=off&0xFFFF;
 	inst.rm_off=off;
 	if (inst.prefix & PREFIX_SEG) {
 		inst.rm_eaa=inst.seg.base+off;
@@ -229,7 +228,6 @@
 		seg_base=SegBase(ds);
 		break;
 	}
-	//off=off&0xFFFF;
 	inst.rm_off=off;
 	if (inst.prefix & PREFIX_SEG) {
 		inst.rm_eaa=inst.seg.base+off;

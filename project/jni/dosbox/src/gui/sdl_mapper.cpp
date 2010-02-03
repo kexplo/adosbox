@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: sdl_mapper.cpp,v 1.57 2009/02/11 22:16:05 c2woody Exp $ */
+/* $Id: sdl_mapper.cpp,v 1.59 2009/05/14 18:01:25 qbix79 Exp $ */
 
 #include <vector>
 #include <list>
@@ -28,7 +28,7 @@
 
 
 #include "SDL.h"
-//#include "SDL_thread.h"
+#include "SDL_thread.h"
 
 #include "dosbox.h"
 #include "video.h"
@@ -53,7 +53,7 @@ enum BB_Types {
 
 enum BC_Types {
 	BC_Mod1,BC_Mod2,BC_Mod3,
-	BC_Hold,
+	BC_Hold
 };
 
 #define BMOD_Mod1 0x0001
@@ -2098,7 +2098,7 @@ static void MAPPER_SaveBinds(void) {
 			bind->AddFlags(buf);
 			fprintf(savefile,"\"%s\" ",buf);
 		}
-		fprintf(savefile,"\r\n");
+		fprintf(savefile,"\n");
 	}
 	fclose(savefile);
 	change_action_text("Mapper file saved.",CLR_WHITE);
@@ -2276,6 +2276,10 @@ void MAPPER_Run(bool pressed) {
 	int cursor = SDL_ShowCursor(SDL_QUERY);
 	SDL_ShowCursor(SDL_ENABLE);
 	bool mousetoggle=false;
+	if(mouselocked) {
+		mousetoggle=true;
+		GFX_CaptureMouse();
+	}
 
 	/* Be sure that there is no update in progress */
 	GFX_EndUpdate( 0 );
@@ -2328,7 +2332,7 @@ void MAPPER_Init(void) {
 	}
 }
 //Somehow including them at the top conflicts with something in setup.h
-#ifdef LINUX
+#ifdef C_X11_XKB
 #include "SDL_syswm.h"
 #include <X11/XKBlib.h>
 #endif
@@ -2377,7 +2381,7 @@ void MAPPER_StartUp(Section * sec) {
 		sdlkey_map[0x41]=SDLK_KP6;
 #elif !defined (WIN32) /* => Linux & BSDs */
 		bool evdev_input = false;
-#ifdef LINUX
+#ifdef C_X11_XKB
 		SDL_SysWMinfo info;
 		SDL_VERSION(&info.version);
 		if (SDL_GetWMInfo(&info)) {

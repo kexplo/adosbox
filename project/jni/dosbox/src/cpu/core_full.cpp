@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,19 +33,21 @@ typedef PhysPt EAPoint;
 #define SegBase(c)	SegPhys(c)
 
 #define LoadMb(off) mem_readb_inline(off)
-#define LoadMw(off) mem_readw(off)
-#define LoadMd(off) mem_readd(off)
+#define LoadMw(off) mem_readw_inline(off)
+#define LoadMd(off) mem_readd_inline(off)
 
 #define LoadMbs(off) (Bit8s)(LoadMb(off))
 #define LoadMws(off) (Bit16s)(LoadMw(off))
 #define LoadMds(off) (Bit32s)(LoadMd(off))
 
 #define SaveMb(off,val)	mem_writeb_inline(off,val)
-#define SaveMw(off,val)	mem_writew(off,val)
-#define SaveMd(off,val)	mem_writed(off,val)
+#define SaveMw(off,val)	mem_writew_inline(off,val)
+#define SaveMd(off,val)	mem_writed_inline(off,val)
 
 #define LoadD(reg) reg
 #define SaveD(reg,val)	reg=val
+
+
 
 #include "core_full/loadwrite.h"
 #include "core_full/support.h"

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: bios.cpp,v 1.73 2009/01/21 21:50:23 qbix79 Exp $ */
+/* $Id: bios.cpp,v 1.74 2009/05/27 09:15:42 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "mem.h"
@@ -32,7 +32,7 @@
 #include "serialport.h"
 
 
-/* if mem_systems 0 then size_extended is reported as the real size else
+/* if mem_systems 0 then size_extended is reported as the real size else 
  * zero is reported. ems and xms can increase or decrease the other_memsystems
  * counter using the BIOS_ZeroExtendedSize call */
 static Bit16u size_extended;
@@ -56,7 +56,7 @@ static Bitu INT70_Handler(void) {
 			IO_Write(0x70,0xb);
 			IO_Write(0x71,IO_Read(0x71)&~0x40);
 		}
-	}
+	} 
 	/* Signal EOI to both pics */
 	IO_Write(0xa0,0x20);
 	IO_Write(0x20,0x20);
@@ -314,14 +314,14 @@ static Bitu INT1A_Handler(void) {
 		LOG(LOG_BIOS,LOG_ERROR)("INT1A:Undefined call %2X",reg_ah);
 	}
 	return CBRET_NONE;
-}
+}	
 
 static Bitu INT11_Handler(void) {
 	reg_ax=mem_readw(BIOS_CONFIGURATION);
 	return CBRET_NONE;
 }
-/*
- * Define the following define to 1 if you want dosbox to check
+/* 
+ * Define the following define to 1 if you want dosbox to check 
  * the system time every 5 seconds and adjust 1/2 a second to sync them.
  */
 #ifndef DOSBOX_CLOCKSYNC
@@ -345,7 +345,7 @@ static Bitu INT8_Handler(void) {
 			} else {
 				if(diff > -18) { diff = 0; } else diff = -9;
 			}
-
+	     
 			value += diff;
 		} else if((value%100)==50) check = true;
 	}
@@ -379,7 +379,7 @@ static Bitu INT17_Handler(void) {
 	case 0x01:		/* PRINTER: Initialize port */
 		break;
 	case 0x02:		/* PRINTER: Get Status */
-		reg_ah=0;
+		reg_ah=0;	
 		break;
 	case 0x20:		/* Some sort of printerdriver install check*/
 		break;
@@ -396,7 +396,7 @@ static Bitu INT14_Handler(void)
 		LOG_MSG("BIOS INT14: Unhandled call AH=%2X DX=%4x",reg_ah,reg_dx);
 		return CBRET_NONE;
 	}
-
+	
 	Bit16u port = real_readw(0x40,reg_dx*2); // DX is always port number
 	if(port==0)	{
 		LOG(LOG_BIOS,LOG_NORMAL)("BIOS INT14: port %d does not exist.",reg_dx);
@@ -407,7 +407,7 @@ static Bitu INT14_Handler(void)
 	case 0x00:	/* Init port */
 		// Parameters:
 		// AL: port parameters
-		// Return:
+		// Return: 
 		// AH: line status
 		// AL: modem status
 		{
@@ -415,7 +415,7 @@ static Bitu INT14_Handler(void)
 			Bitu baudrate = 9600;
 			Bit16u baudresult;
 			Bitu rawbaud=reg_al>>5;
-
+			
 			if(rawbaud==0){ baudrate=110;}
 			else if (rawbaud==1){ baudrate=150;}
 			else if (rawbaud==2){ baudrate=300;}
@@ -433,7 +433,7 @@ static Bitu INT14_Handler(void)
 
 			// set line parameters, disable divider access
 			IO_WriteB(port+3, reg_al&0x1F);//LCR
-
+			
 			// disable interrupts
 			IO_WriteB(port+1, 0);
 			IO_ReadB(port+2);
@@ -447,11 +447,10 @@ static Bitu INT14_Handler(void)
 	case 0x01:	/* Write character */
 		// Parameters:
 		// AL: character
-		// Return:
+		// Return: 
 		// AH: line status
 		// AL: modem status
 		{
-/*
 			if(serialports[reg_dx]) {
 				bool timeout;
 				// switch modem lines on
@@ -462,21 +461,19 @@ static Bitu INT14_Handler(void)
 				reg_ah=IO_ReadB(port+5);
 				if(timeout) reg_ah |= 0x80;
 			}
-*/
 			CALLBACK_SCF(false);
 		}
 		break;
-
+	
 	case 0x02:	/* Read character */
 		{
-/*
 			if(serialports[reg_dx]) {
 				bool timeout;
 				Bit8u buffer;
 				// switch modem lines on
 				IO_WriteB(port+4,0x3);
 				// wait for something
-				timeout = !serialports[reg_dx]->Getchar(&buffer,&reg_ah,true,
+				timeout = !serialports[reg_dx]->Getchar(&buffer,&reg_ah,true, 
 					mem_readb(BIOS_COM1_TIMEOUT+reg_dx)*1000);
 
 				// RTS off
@@ -486,7 +483,6 @@ static Bitu INT14_Handler(void)
 				if(timeout) reg_ah |= 0x80;
 				else reg_al=buffer;
 			}
-*/
 			CALLBACK_SCF(false);
 			break;
 		}
@@ -496,7 +492,7 @@ static Bitu INT14_Handler(void)
 			reg_al=IO_ReadB(port+6);
 			CALLBACK_SCF(false);
 		}
-		break;
+		break;		
 	}
 	return CBRET_NONE;
 }
@@ -595,7 +591,7 @@ static Bitu INT15_Handler(void) {
 				reg_cx = (Bit16u)(JOYSTICK_GetMove_X(1)*127+128);
 				reg_dx = (Bit16u)(JOYSTICK_GetMove_Y(1)*127+128);
 				CALLBACK_SCF(false);
-			} else {
+			} else {			
 				reg_ax = reg_bx = reg_cx = reg_dx = 0;
 				CALLBACK_SCF(true);
 			}
@@ -635,7 +631,7 @@ static Bitu INT15_Handler(void) {
 			MEM_A20_Enable(enabled);
 			CALLBACK_SCF(false);
 			break;
-		}
+		}	
 	case 0x88:	/* SYSTEM - GET EXTENDED MEMORY SIZE (286+) */
 		reg_ax=other_memsystems?0:size_extended;
 		LOG(LOG_BIOS,LOG_NORMAL)("INT15:Function 0x88 Remaining %04X kb",reg_ax);
@@ -707,7 +703,7 @@ static Bitu INT15_Handler(void) {
 			break;
 		case 0x06:		// extended commands
 			if ((reg_bh==0x01) || (reg_bh==0x02)) {
-				CALLBACK_SCF(false);
+				CALLBACK_SCF(false); 
 				reg_ah=0;
 			} else {
 				CALLBACK_SCF(true);
@@ -745,8 +741,6 @@ static Bitu INT15_Handler(void) {
 	return CBRET_NONE;
 }
 
-// FIXME: Gerald
-//
 static Bitu Reboot_Handler(void) {
 	// switch to text mode, notify user (let's hope INT10 still works)
 	const char* const text = "\n\n   Reboot requested, quitting now.";
@@ -761,12 +755,13 @@ static Bitu Reboot_Handler(void) {
 	LOG_MSG(text);
 	double start = PIC_FullIndex();
 	while((PIC_FullIndex()-start)<3000) CALLBACK_Idle();
-	// throw 1;
+	// FIXME
+	//throw 1;
 	return CBRET_NONE;
 }
 
 void BIOS_ZeroExtendedSize(bool in) {
-	if(in) other_memsystems++;
+	if(in) other_memsystems++; 
 	else other_memsystems--;
 	if(other_memsystems < 0) other_memsystems=0;
 }
@@ -823,7 +818,7 @@ public:
 			else mem_writew(BIOS_MEMORY_SIZE,640);
 			mem_writew(BIOS_TRUE_MEMORY_SIZE,640);
 		} else mem_writew(BIOS_MEMORY_SIZE,640);
-
+		
 		/* INT 13 Bios Disk Support */
 		BIOS_SetupDisks();
 
@@ -849,7 +844,7 @@ public:
 		/* INT 1C System Timer tick called from INT 8 */
 		callback[7].Install(&INT1C_Handler,CB_IRET,"Int 1c Timer");
 		callback[7].Set_RealVec(0x1C);
-
+		
 		/* IRQ 8 RTC Handler */
 		callback[8].Install(&INT70_Handler,CB_IRET,"Int 70 RTC");
 		callback[8].Set_RealVec(0x70);
@@ -870,7 +865,7 @@ public:
 
 		/* Irq 2 */
 		RealPt irq2pt=RealMake(0xf000,0xff55);	/* Ghost busters 2 mt32 mode */
-		Bitu call_irq2=CALLBACK_Allocate();
+		Bitu call_irq2=CALLBACK_Allocate();	
 		CALLBACK_Setup(call_irq2,NULL,CB_IRET_EOI_PIC1,Real2Phys(irq2pt),"irq 2 bios");
 		RealSetVec(0x0a,irq2pt);
 
@@ -888,7 +883,7 @@ public:
 		const char* const b_type =
 			"IBM COMPATIBLE 486 BIOS COPYRIGHT The DOSBox Team.";
 		for(Bitu i = 0; i < strlen(b_type); i++) phys_writeb(0xfe00e + i,b_type[i]);
-
+		
 		// System BIOS version
 		const char* const b_vers =
 			"DOSBox FakeBIOS v1.0";
@@ -926,9 +921,9 @@ public:
 				for (Bitu i=0; i<0x10; i++) phys_writeb(PhysMake(0xf000,0xa084+i),0x80);
 			} else real_writeb(0x40,0xd4,0x00);
 		}
-
+	
 		/* Setup some stuff in 0x40 bios segment */
-
+		
 		// port timeouts
 		// always 1 second even if the port does not exist
 		mem_writeb(BIOS_LPT1_TIMEOUT,1);
@@ -938,7 +933,7 @@ public:
 		mem_writeb(BIOS_COM2_TIMEOUT,1);
 		mem_writeb(BIOS_COM3_TIMEOUT,1);
 		mem_writeb(BIOS_COM4_TIMEOUT,1);
-
+		
 		/* detect parallel ports */
 		Bitu ppindex=0; // number of lpt ports
 		if ((IO_Read(0x378)!=0xff)|(IO_Read(0x379)!=0xff)) {
@@ -976,10 +971,10 @@ public:
 
 		/* Setup equipment list */
 		// look http://www.bioscentral.com/misc/bda.htm
-
-		//Bitu config=0x4400;	//1 Floppy, 2 serial and 1 parrallel
+		
+		//Bitu config=0x4400;	//1 Floppy, 2 serial and 1 parrallel 
 		Bitu config = 0x0;
-
+		
 		// set number of parallel ports
 		// if(ppindex == 0) config |= 0x8000; // looks like 0 ports are not specified
 		//else if(ppindex == 1) config |= 0x0000;

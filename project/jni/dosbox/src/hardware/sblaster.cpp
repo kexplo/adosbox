@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: sblaster.cpp,v 1.71 2009/02/01 11:07:11 qbix79 Exp $ */
+/* $Id: sblaster.cpp,v 1.73 2009/04/25 07:02:28 qbix79 Exp $ */
 
 #include <iomanip>
 #include <sstream>
@@ -78,11 +78,11 @@ enum DSP_MODES {
 enum DMA_MODES {
 	DSP_DMA_NONE,
 	DSP_DMA_2,DSP_DMA_3,DSP_DMA_4,DSP_DMA_8,
-	DSP_DMA_16,DSP_DMA_16_ALIASED,
+	DSP_DMA_16,DSP_DMA_16_ALIASED
 };
 
 enum {
-	PLAY_MONO,PLAY_STEREO,
+	PLAY_MONO,PLAY_STEREO
 };
 
 struct SB_INFO {
@@ -461,8 +461,13 @@ static void GenerateDMASound(Bitu size) {
 			read=sb.dma.chan->Read(size,(Bit8u *)&sb.dma.buf.b16[sb.dma.remain_size]) 
 				>> (sb.dma.mode==DSP_DMA_16_ALIASED ? 1:0);
 			Bitu total=read+sb.dma.remain_size;
+#if defined(WORDS_BIGENDIAN)
+			if (sb.dma.sign) sb.chan->AddSamples_s16_nonnative(total>>1,sb.dma.buf.b16);
+			else sb.chan->AddSamples_s16u_nonnative(total>>1,(Bit16u *)sb.dma.buf.b16);
+#else
 			if (sb.dma.sign) sb.chan->AddSamples_s16(total>>1,sb.dma.buf.b16);
 			else sb.chan->AddSamples_s16u(total>>1,(Bit16u *)sb.dma.buf.b16);
+#endif
 			if (total&1) {
 				sb.dma.remain_size=1;
 				sb.dma.buf.b16[0]=sb.dma.buf.b16[total-1];
@@ -470,8 +475,13 @@ static void GenerateDMASound(Bitu size) {
 		} else {
 			read=sb.dma.chan->Read(size,(Bit8u *)sb.dma.buf.b16) 
 				>> (sb.dma.mode==DSP_DMA_16_ALIASED ? 1:0);
+#if defined(WORDS_BIGENDIAN)
+			if (sb.dma.sign) sb.chan->AddSamples_m16_nonnative(read,sb.dma.buf.b16);
+			else sb.chan->AddSamples_m16u_nonnative(read,(Bit16u *)sb.dma.buf.b16);
+#else
 			if (sb.dma.sign) sb.chan->AddSamples_m16(read,sb.dma.buf.b16);
 			else sb.chan->AddSamples_m16u(read,(Bit16u *)sb.dma.buf.b16);
+#endif
 		}
 		//restore buffer length value to byte size in aliased mode
 		if (sb.dma.mode==DSP_DMA_16_ALIASED) read=read<<1;
@@ -813,9 +823,7 @@ static void DSP_DoCommand(void) {
 		DSP_PrepareDMA_Old(DSP_DMA_8,true,false);
 		break;
 	case 0x38:  /* Write to SB MIDI Output */
-#if 0
 		if (sb.midi == true) MIDI_RawOutByte(sb.dsp.in.data[0]);
-#endif
 		break;
 	case 0x40:	/* Set Timeconstant */
 		sb.freq=(1000000 / (256 - sb.dsp.in.data[0]));
@@ -1385,9 +1393,7 @@ static void write_sb(Bitu port,Bitu val,Bitu iolen) {
 }
 
 static void adlib_gusforward(Bitu port,Bitu val,Bitu iolen) {
-#if 0
 	adlib_commandreg=val;
-#endif
 }
 
 static void SBLASTER_CallBack(Bitu len) {
@@ -1521,12 +1527,8 @@ public:
 		autoexecline.Install(temp.str());
 
 		/* Soundblaster midi interface */
-#if 0
 		if (!MIDI_Available()) sb.midi = false;
-#else
-		//else sb.midi = true;
-		sb.midi = false;
-#endif
+		else sb.midi = true;
 	}	
 	
 	~SBLASTER() {

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,11 +33,11 @@
 
 #include "paging.h"
 #define SegBase(c)	SegPhys(c)
-#define LoadMb(off) mem_readb_inline(off)
+#define LoadMb(off) mem_readb(off)
 #define LoadMw(off) mem_readw(off)
 #define LoadMd(off) mem_readd(off)
 
-#define SaveMb(off,val)	mem_writeb_inline(off,val)
+#define SaveMb(off,val)	mem_writeb(off,val)
 #define SaveMw(off,val)	mem_writew(off,val)
 #define SaveMd(off,val)	mem_writed(off,val)
 
@@ -103,14 +103,17 @@ static struct {
 #define BaseDS		core.base_ds
 #define BaseSS		core.base_ss
 
-#define Fetchb() *(Bit8u *)core.cseip++
+static INLINE Bit8u Fetchb() {
+	Bit8u temp=host_readb(core.cseip);
+	core.cseip+=1;
+	return temp;
+}
 
 static INLINE Bit16u Fetchw() {
 	Bit16u temp=host_readw(core.cseip);
 	core.cseip+=2;
 	return temp;
 }
-
 static INLINE Bit32u Fetchd() {
 	Bit32u temp=host_readd(core.cseip);
 	core.cseip+=4;
@@ -125,6 +128,7 @@ static INLINE Bit32u Fetchd() {
 #include "instructions.h"
 #include "core_normal/support.h"
 #include "core_normal/string.h"
+
 
 #define EALookupTable (core.ea_table)
 
@@ -187,7 +191,7 @@ Bits CPU_Core_Simple_Trap_Run(void) {
 	CPU_Cycles = 1;
 	cpu.trap_skip = false;
 
-	Bits ret=CPU_Core_Full_Run();
+	Bits ret=CPU_Core_Normal_Run();
 	if (!cpu.trap_skip) CPU_HW_Interrupt(1);
 	CPU_Cycles = oldCycles-1;
 	cpudecoder = &CPU_Core_Simple_Run;
@@ -200,4 +204,3 @@ Bits CPU_Core_Simple_Trap_Run(void) {
 void CPU_Core_Simple_Init(void) {
 
 }
-

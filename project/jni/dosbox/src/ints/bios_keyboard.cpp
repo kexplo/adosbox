@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2007  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 /* SDL by default treats numlock and scrolllock different from all other keys.
  * Some linux distros disable this bad behaviour. (for example debian) 
  * Define the following if this is the case */
-#define CAN_USE_LOCK 1
+//#define CAN_USE_LOCK 1
 
 static Bitu call_int16,call_irq1,call_irq6;
 

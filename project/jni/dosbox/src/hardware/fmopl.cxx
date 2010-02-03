@@ -647,6 +647,7 @@ static UINT32	LFO_AM;
 static INT32	LFO_PM;
 
 
+
 INLINE int limit( int val, int max, int min ) {
 	if ( val > max )
 		val = max;

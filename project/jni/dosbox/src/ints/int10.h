@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: int10.h,v 1.36 2008/05/10 17:33:28 c2woody Exp $ */
+/* $Id: int10.h,v 1.39 2009/05/27 09:15:42 qbix79 Exp $ */
 
 #include "vga.h"
 
@@ -146,11 +146,11 @@ typedef struct {
 
 extern Int10Data int10;
 
-INLINE Bit8u CURSOR_POS_COL(Bit8u page) {
+static Bit8u CURSOR_POS_COL(Bit8u page) {
 	return real_readb(BIOSMEM_SEG,BIOSMEM_CURSOR_POS+page*2);
 }
 
-INLINE Bit8u CURSOR_POS_ROW(Bit8u page) {
+static Bit8u CURSOR_POS_ROW(Bit8u page) {
 	return real_readb(BIOSMEM_SEG,BIOSMEM_CURSOR_POS+page*2+1);
 }
 
@@ -219,8 +219,8 @@ void INT10_SetupVESA(void);
 RealPt INT10_EGA_RIL_GetVersionPt(void);
 void INT10_EGA_RIL_ReadRegister(Bit8u & bl, Bit16u dx);
 void INT10_EGA_RIL_WriteRegister(Bit8u & bl, Bit8u bh, Bit16u dx);
-void INT10_EGA_RIL_ReadRegisterRange(Bit8u & bl, Bit8u ch, Bit8u cl, Bit16u dx, PhysPt dst);
-void INT10_EGA_RIL_WriteRegisterRange(Bit8u & bl, Bit8u ch, Bit8u cl, Bit16u dx, PhysPt dst);
+void INT10_EGA_RIL_ReadRegisterRange(Bit8u ch, Bit8u cl, Bit16u dx, PhysPt dst);
+void INT10_EGA_RIL_WriteRegisterRange(Bit8u ch, Bit8u cl, Bit16u dx, PhysPt dst);
 void INT10_EGA_RIL_ReadRegisterSet(Bit16u cx, PhysPt tbl);
 void INT10_EGA_RIL_WriteRegisterSet(Bit16u cx, PhysPt tbl);
 

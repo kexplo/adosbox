@@ -1,15 +1,15 @@
-#define SaveIP() reg_eip=(Bit32u)(inst.cseip-SegBase(cs)-(Bit32u)MemBase);
-#define LoadIP() inst.cseip=SegBase(cs)+reg_eip+(Bit32u)MemBase;
-#define GetIP()	(inst.cseip-SegBase(cs)-(Bit32u)MemBase)
+#define SaveIP() reg_eip=(Bit32u)(inst.cseip-SegBase(cs));
+#define LoadIP() inst.cseip=SegBase(cs)+reg_eip;
+#define GetIP()	(inst.cseip-SegBase(cs))
 
 #define RunException() {										\
 	CPU_Exception(cpu.exception.which,cpu.exception.error);		\
 	continue;													\
 }
 
-/*
 static INLINE Bit8u the_Fetchb(EAPoint & loc) {
-	Bit8u temp=LoadMb(loc++);
+	Bit8u temp=LoadMb(loc);
+	loc+=1;
 	return temp;
 }
 	
@@ -20,23 +20,6 @@ static INLINE Bit16u the_Fetchw(EAPoint & loc) {
 }
 static INLINE Bit32u the_Fetchd(EAPoint & loc) {
 	Bit32u temp=LoadMd(loc);
-	loc+=4;
-	return temp;
-}
-*/
-
-static INLINE Bit8u the_Fetchb(EAPoint & loc) {
-	Bit8u temp=host_readb((Bit8u*)loc++);
-	return temp;
-}
-	
-static INLINE Bit16u the_Fetchw(EAPoint & loc) {
-	Bit16u temp=host_readw((Bit8u*)loc);
-	loc+=2;
-	return temp;
-}
-static INLINE Bit32u the_Fetchd(EAPoint & loc) {
-	Bit32u temp=host_readd((Bit8u*)loc);
 	loc+=4;
 	return temp;
 }

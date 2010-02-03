@@ -14,7 +14,7 @@
 #include "mem.h"
 #include "mixer.h"
 #include "SDL.h"
-//#include "SDL_thread.h"
+#include "SDL_thread.h"
 
 #if defined(C_SDL_SOUND)
 #include "SDL_sound.h"

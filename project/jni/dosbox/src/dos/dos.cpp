@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dos.cpp,v 1.116 2009/03/14 16:10:00 c2woody Exp $ */
+/* $Id: dos.cpp,v 1.117 2009/04/16 12:16:52 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -88,20 +88,17 @@ static Bitu DOS_21Handler(void) {
 	case 0x03:		/* Read character from STDAUX */
 		{
 			Bit16u port = real_readw(0x40,0);
-/*
 			if(port!=0 && serialports[0]) {
 				Bit8u status;
 				// RTS/DTR on
 				IO_WriteB(port+4,0x3);
 				serialports[0]->Getchar(&reg_al, &status, true, 0xFFFFFFFF);
 			}
-*/
 		}
 		break;
 	case 0x04:		/* Write Character to STDAUX */
 		{
 			Bit16u port = real_readw(0x40,0);
-/*
 			if(port!=0 && serialports[0]) {
 				// RTS/DTR on
 				IO_WriteB(port+4,0x3);
@@ -109,7 +106,6 @@ static Bitu DOS_21Handler(void) {
 				// RTS off
 				IO_WriteB(port+4,0x1);
 			}
-*/
 		}
 		break;
 	case 0x05:		/* Write Character to PRINTER */
@@ -401,7 +397,7 @@ static Bitu DOS_21Handler(void) {
 	case 0x1f: /* Get drive parameter block for default drive */
 	case 0x32: /* Get drive parameter block for specific drive */
 		{	/* Officially a dpb should be returned as well. The disk detection part is implemented */
-			Bitu drive=reg_dl;if(!drive || reg_ah==0x1f) drive=dos.current_drive;else drive--;
+			Bitu drive=reg_dl;if(!drive || reg_ah==0x1f) drive = DOS_GetDefaultDrive();else drive--;
 			if(Drives[drive]) {
 				reg_al = 0x00;
 				SegSet16(ds,dos.tables.dpb);
@@ -1130,6 +1126,7 @@ public:
 		DOS_SetupMemory();								/* Setup first MCB */
 		DOS_SetupPrograms();
 		DOS_SetupMisc();							/* Some additional dos interrupts */
+		DOS_SDA(DOS_SDA_SEG,DOS_SDA_OFS).SetDrive(25); /* Else the next call gives a warning. */
 		DOS_SetDefaultDrive(25);
 	
 		dos.version.major=5;

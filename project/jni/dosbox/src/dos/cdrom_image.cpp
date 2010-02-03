@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: cdrom_image.cpp,v 1.23 2008/10/05 14:44:52 qbix79 Exp $ */
+/* $Id: cdrom_image.cpp,v 1.24 2009/03/19 20:45:42 c2woody Exp $ */
 
 #include <cctype>
 #include <cmath>
@@ -33,7 +33,7 @@
 #include "support.h"
 #include "setup.h"
 
-#if !defined(WIN32) && !defined(UNDER_CE)
+#if !defined(WIN32)
 #include <libgen.h>
 #else
 #include <string.h>
@@ -327,7 +327,11 @@ void CDROM_Interface_Image::CDAudioCallBack(Bitu len)
 		}
 	}
 	SDL_mutexV(player.mutex);
+#if defined(WORDS_BIGENDIAN)
+	player.channel->AddSamples_s16_nonnative(len/4,(Bit16s *)player.buffer);
+#else
 	player.channel->AddSamples_s16(len/4,(Bit16s *)player.buffer);
+#endif
 	memmove(player.buffer, &player.buffer[len], player.bufLen - len);
 	player.bufLen -= len;
 }
@@ -387,7 +391,7 @@ bool CDROM_Interface_Image::CanReadPVD(TrackFile *file, int sectorSize, bool mod
 	return (pvd[0] == 1 && !strncmp((char*)(&pvd[1]), "CD001", 5) && pvd[6] == 1);
 }
 
-#if defined(WIN32) || defined(UNDER_CE)
+#if defined(WIN32)
 static string dirname(char * file) {
 	char * sep = strrchr(file, '\\');
 	if (sep == NULL)

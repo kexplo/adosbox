@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
-
+  
 #include "dosbox.h"
 #include "debug.h"
 #include "support.h"
@@ -44,9 +44,9 @@ void lowcase(std::string &str) {
 	int (*tf)(int) = std::tolower;
 	std::transform(str.begin(), str.end(), str.begin(), tf);
 }
+  
 
-
-/*
+/* 
 	Ripped some source from freedos for this one.
 
 */
@@ -63,7 +63,7 @@ void strreplace(char * str,char o,char n) {
 		str++;
 	}
 }
-char *ltrim(char *str) {
+char *ltrim(char *str) { 
 	while (*str && isspace(*reinterpret_cast<unsigned char*>(str))) str++;
 	return str;
 }
@@ -80,7 +80,6 @@ char *trim(char *str) {
 	return ltrim(rtrim(str));
 }
 
-/*
 char * upcase(char * str) {
     for (char* idx = str; *idx ; idx++) *idx = toupper(*reinterpret_cast<unsigned char*>(idx));
     return str;
@@ -91,7 +90,7 @@ char * lowcase(char * str) {
 	return str;
 }
 
-*/
+
 
 bool ScanCMDBool(char * cmd,char const * const check) {
 	char * scan=cmd;size_t c_len=strlen(check);
@@ -115,7 +114,7 @@ char * ScanCMDRemain(char * cmd) {
 		while ( *scan && !isspace(*reinterpret_cast<unsigned char*>(scan)) ) scan++;
 		*scan=0;
 		return found;
-	} else return 0;
+	} else return 0; 
 }
 
 char * StripWord(char *&line) {
@@ -182,7 +181,7 @@ void E_Exit(const char * format,...) {
 	va_end(msg);
 	strcat(buf,"\n");
 
-    // FIXME
+	// FIXME
     printf("bad modification!!!");
     exit(1);
 	// throw(buf);

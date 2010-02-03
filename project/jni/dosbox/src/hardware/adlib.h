@@ -1,9 +1,33 @@
+/*
+ *  Copyright (C) 2002-2009  The DOSBox Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
+
+/* $Id: adlib.h,v 1.5 2009/04/28 21:45:43 c2woody Exp $ */
+
 #ifndef DOSBOX_ADLIB_H
 #define DOSBOX_ADLIB_H
 
 #include "dosbox.h"
 #include "mixer.h"
+#include "inout.h"
+#include "setup.h"
 #include "pic.h"
+#include "hardware.h"
+
 
 namespace Adlib {
 
@@ -67,7 +91,7 @@ struct Chip {
 typedef enum {
 	MODE_OPL2,
 	MODE_DUALOPL2,
-	MODE_OPL3,
+	MODE_OPL3
 } Mode;
 
 class Handler {
@@ -80,6 +104,8 @@ public:
 	virtual void Generate( MixerChannel* chan, Bitu samples ) = 0;
 	//Initialize at a specific sample rate and mode
 	virtual void Init( Bitu rate ) = 0;
+	virtual ~Handler() {
+	}
 };
 
 //The cache for 2 chips or an opl3
@@ -88,7 +114,11 @@ typedef Bit8u RegisterCache[512];
 //Internal class used for dro capturing
 class Capture;
 
-class Module {
+class Module: public Module_base {
+	IO_ReadHandleObject ReadHandler[3];
+	IO_WriteHandleObject WriteHandler[3];
+	MixerObject mixerObject;
+
 	//Mode we're running in
 	Mode mode;
 	//Last selected address in the chip for the different modes
@@ -99,14 +129,13 @@ class Module {
 	void CacheWrite( Bit32u reg, Bit8u val );
 	void DualWrite( Bit8u index, Bit8u reg, Bit8u val );
 public:
-	MixerChannel* chan;
+	static OPL_Mode oplmode;
+	MixerChannel* mixerChan;
 	Bit32u lastUsed;				//Ticks when adlib was last used to turn of mixing after a few second
 
 	Handler* handler;				//Handler that will generate the sound
 	RegisterCache cache;
-#if 0
 	Capture* capture;
-#endif
 	Chip	chip[2];
 
 	//Handle port writes
@@ -114,10 +143,11 @@ public:
 	Bitu PortRead( Bitu port, Bitu iolen );
 	void Init( Mode m );
 
-	Module();
+	Module( Section* configuration); 
+	~Module();
 };
 
 
-};		//Adlib namespace
+}		//Adlib namespace
 
 #endif

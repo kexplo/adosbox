@@ -16,9 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dos_keyboard_layout.cpp,v 1.19 2009/02/01 14:24:36 qbix79 Exp $ */
-
-/* n0p - 2Do - incorrect destructor */
+/* $Id: dos_keyboard_layout.cpp,v 1.21 2009/04/01 18:30:41 c2woody Exp $ */
 
 #include "dosbox.h"
 #include "bios.h"
@@ -39,6 +37,7 @@
 #include <windows.h>
 #endif
 
+
 static FILE* OpenDosboxFile(const char* name) {
 	Bit8u drive;
 	char fullname[DOS_PATHLENGTH];
@@ -46,15 +45,15 @@ static FILE* OpenDosboxFile(const char* name) {
 	localDrive* ldp=0;
 	// try to build dos name
 	if (DOS_MakeName(name,fullname,&drive)) {
-		//try {
+	  //try {
 			// try to open file on mounted drive first
 			ldp=static_cast<localDrive*>(Drives[drive]);
 			if (ldp) {
 				FILE *tmpfile=ldp->GetSystemFilePtr(fullname, "rb");
 				if (tmpfile != NULL) return tmpfile;
 			}
-		//}
-		//catch(...) {}
+			//}
+			//catch(...) {}
 	}
 	FILE *tmpfile=fopen(name, "rb");
 	return tmpfile;
@@ -84,6 +83,7 @@ public:
 	Bitu switch_keyboard_layout(const char* new_layout, keyboard_layout* &created_layout);
 	void switch_foreign_layout();
 	const char* get_layout_name();
+	const char* main_language_code();
 
 
 private:
@@ -173,8 +173,11 @@ static Bit32u read_kcl_file(const char* kcl_file_name, const char* layout_id, bo
 		Bit8u data_len=rbuf[2];
 
 		char lng_codes[258];
+		fseek(tempfile, -2, SEEK_CUR);
 		// get all language codes for this layout
 		for (Bitu i=0; i<data_len;) {
+			fread(rbuf, sizeof(Bit8u), 2, tempfile);
+			Bit16u lcnum=host_readw(&rbuf[0]);
 			i+=2;
 			Bitu lcpos=0;
 			for (;i<data_len;) {
@@ -190,6 +193,13 @@ static Bit32u read_kcl_file(const char* kcl_file_name, const char* layout_id, bo
 				return cur_pos;
 			}
 			if (first_id_only) break;
+			if (lcnum) {
+				sprintf(&lng_codes[lcpos],"%d",lcnum);
+				if (strcasecmp(lng_codes, layout_id)==0) {
+					// language ID found in file, return file position
+					return cur_pos;
+				}
+			}
 		}
 		fseek(tempfile, cur_pos+3+len, SEEK_SET);
 	}
@@ -233,10 +243,12 @@ static Bit32u read_kcl_data(Bit8u * kcl_data, Bit32u kcl_data_size, const char* 
 				return cur_pos;
 			}
 			if (first_id_only) break;
-			sprintf(&lng_codes[lcpos],"%d",lcnum);
-			if (strcasecmp(lng_codes, layout_id)==0) {
-				// language ID found, return position
-				return cur_pos;
+			if (lcnum) {
+				sprintf(&lng_codes[lcpos],"%d",lcnum);
+				if (strcasecmp(lng_codes, layout_id)==0) {
+					// language ID found, return position
+					return cur_pos;
+				}
 			}
 			dpos+=2;
 		}
@@ -1006,6 +1018,13 @@ const char* keyboard_layout::get_layout_name() {
 	return NULL;
 }
 
+const char* keyboard_layout::main_language_code() {
+	if (language_codes) {
+		return language_codes[0];
+	}
+	return NULL;
+}
+
 
 static keyboard_layout* loaded_layout=NULL;
 
@@ -1078,7 +1097,6 @@ public:
 			WORD cur_kb_layout = LOWORD(GetKeyboardLayout(0));
 			WORD cur_kb_subID  = 0;
 			char layoutID_string[KL_NAMELENGTH];
-/*
 			if (GetKeyboardLayoutName(layoutID_string)) {
 				if (strlen(layoutID_string) == 8) {
 					int cur_kb_layout_by_name = ConvHexWord((char*)&layoutID_string[4]);
@@ -1094,13 +1112,12 @@ public:
 					}
 				}
 			}
-*/
 			// try to match emulated keyboard layout with host-keyboardlayout
 			// codepage 437 (standard) is preferred
 			switch (cur_kb_layout) {
-				case 1026:
+/*				case 1026:
 					layoutname = "bg241";
-					break;
+					break; */
 				case 1029:
 					layoutname = "cz243";
 					break;
@@ -1148,15 +1165,15 @@ public:
 					layoutname = "no";
 					break;
 				case 1045:
-					layoutname = "pl214";
+					layoutname = "pl";
 					break;
 				case 1046:
 					layoutname = "br";
 					wants_dos_codepage = 437;
 					break;
-				case 1048:
+/*				case 1048:
 					layoutname = "ro446";
-					break;
+					break; */
 				case 1049:
 					layoutname = "ru";
 					wants_dos_codepage = 437;
@@ -1167,9 +1184,9 @@ public:
 				case 1051:
 					layoutname = "sk";
 					break;
-				case 1052:
+/*				case 1052:
 					layoutname = "sq448";
-					break;
+					break; */
 				case 1053:
 					layoutname = "sv";
 					wants_dos_codepage = 437;
@@ -1193,9 +1210,9 @@ public:
 /*				case 1062:
 					layoutname = "lv";
 					break; */
-				case 1063:
+/*				case 1063:
 					layoutname = "lt221";
-					break;
+					break; */
 /*				case 1064:
 					layoutname = "tj";
 					break;
@@ -1235,9 +1252,17 @@ public:
 			loaded_layout->read_codepage_file("auto", req_codepage);
 		}
 
+/*		if (strncmp(layoutname,"auto",4) && strncmp(layoutname,"none",4)) {
+			LOG_MSG("Loading DOS keyboard layout %s ...",layoutname);
+		} */
 		if (loaded_layout->read_keyboard_file(layoutname, dos.loaded_codepage)) {
 			if (strncmp(layoutname,"auto",4)) {
 				LOG_MSG("Error loading keyboard layout %s",layoutname);
+			}
+		} else {
+			const char* lcode = loaded_layout->main_language_code();
+			if (lcode) {
+				LOG_MSG("DOS keyboard layout loaded with main language code %s for layout %s",lcode,layoutname);
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dos_execute.cpp,v 1.66 2009/01/14 22:16:00 qbix79 Exp $ */
+/* $Id: dos_execute.cpp,v 1.67 2009/05/27 09:15:41 qbix79 Exp $ */
 
 #include <string.h>
 #include <ctype.h>
@@ -138,8 +138,7 @@ bool DOS_Terminate(bool tsr,Bit8u exitcode) {
 	// Free memory owned by process
 	if (!tsr) DOS_FreeProcessMemory(mempsp);
 	DOS_UpdatePSPName();
-/* n0p - no autodetect */
-	return true;
+
 	if ((!(CPU_AutoDetermineMode>>CPU_AUTODETERMINE_SHIFT)) || (cpu.pmode)) return true;
 
 	CPU_AutoDetermineMode>>=CPU_AUTODETERMINE_SHIFT;
@@ -154,7 +153,7 @@ bool DOS_Terminate(bool tsr,Bit8u exitcode) {
 	}
 #if (C_DYNAMIC_X86) || (C_DYNREC)
 	if (CPU_AutoDetermineMode&CPU_AUTODETERMINE_CORE) {
-		cpudecoder=&CPU_Core_Full_Run;
+		cpudecoder=&CPU_Core_Normal_Run;
 		CPU_CycleLeft=0;
 		CPU_Cycles=0;
 	}

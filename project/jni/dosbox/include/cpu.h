@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: cpu.h,v 1.55 2008/08/24 16:43:06 qbix79 Exp $ */
+/* $Id: cpu.h,v 1.57 2009/05/27 09:15:40 qbix79 Exp $ */
 
 #ifndef DOSBOX_CPU_H
 #define DOSBOX_CPU_H
@@ -38,8 +38,8 @@
 #define CPU_AUTODETERMINE_SHIFT		0x02
 #define CPU_AUTODETERMINE_MASK		0x03
 
-#define CPU_CYCLES_LOWER_LIMIT		200
-#define CPU_CYCLES_UPPER_LIMIT		10000
+#define CPU_CYCLES_LOWER_LIMIT		100
+
 
 #define CPU_ARCHTYPE_MIXED			0xff
 #define CPU_ARCHTYPE_386SLOW		0x30
@@ -72,7 +72,6 @@ extern CPU_Decoder * cpudecoder;
 Bits CPU_Core_Normal_Run(void);
 Bits CPU_Core_Normal_Trap_Run(void);
 Bits CPU_Core_Simple_Run(void);
-Bits CPU_Core_VerySimple_Run(void);
 Bits CPU_Core_Full_Run(void);
 Bits CPU_Core_Dyn_X86_Run(void);
 Bits CPU_Core_Dyn_X86_Trap_Run(void);
@@ -84,6 +83,7 @@ Bits CPU_Core_Prefetch_Trap_Run(void);
 void CPU_Enable_SkipAutoAdjust(void);
 void CPU_Disable_SkipAutoAdjust(void);
 void CPU_Reset_AutoAdjust(void);
+
 
 //CPU Stuff
 
@@ -144,13 +144,13 @@ void CPU_ENTER(bool use32,Bitu bytes,Bitu level);
 #define CPU_INT_NOIOPLCHECK		0x8
 
 void CPU_Interrupt(Bitu num,Bitu type,Bitu oldeip);
-INLINE void CPU_HW_Interrupt(Bitu num) {
+static INLINE void CPU_HW_Interrupt(Bitu num) {
 	CPU_Interrupt(num,0,reg_eip);
 }
-INLINE void CPU_SW_Interrupt(Bitu num,Bitu oldeip) {
+static INLINE void CPU_SW_Interrupt(Bitu num,Bitu oldeip) {
 	CPU_Interrupt(num,CPU_INT_SOFTWARE,oldeip);
 }
-INLINE void CPU_SW_Interrupt_NoIOPLCheck(Bitu num,Bitu oldeip) {
+static INLINE void CPU_SW_Interrupt_NoIOPLCheck(Bitu num,Bitu oldeip) {
 	CPU_Interrupt(num,CPU_INT_SOFTWARE|CPU_INT_NOIOPLCHECK,oldeip);
 }
 
@@ -478,12 +478,12 @@ struct CPUBlock {
 
 extern CPUBlock cpu;
 
-INLINE void CPU_SetFlagsd(Bitu word) {
+static INLINE void CPU_SetFlagsd(Bitu word) {
 	Bitu mask=cpu.cpl ? FMASK_NORMAL : FMASK_ALL;
 	CPU_SetFlags(word,mask);
 }
 
-INLINE void CPU_SetFlagsw(Bitu word) {
+static INLINE void CPU_SetFlagsw(Bitu word) {
 	Bitu mask=(cpu.cpl ? FMASK_NORMAL : FMASK_ALL) & 0xffff;
 	CPU_SetFlags(word,mask);
 }

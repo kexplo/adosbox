@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2008  The DOSBox Team
+ *  Copyright (C) 2002-2009  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dos_programs.cpp,v 1.91 2009/02/01 14:24:36 qbix79 Exp $ */
+/* $Id: dos_programs.cpp,v 1.93 2009/04/16 12:28:30 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include <stdlib.h>
@@ -253,7 +253,7 @@ public:
 					MSCDEX_SetCDInterface(CDROM_USE_SDL, num);
 				} else {
 #if defined (WIN32)
-/*					// Check OS
+					// Check OS
 					OSVERSIONINFO osi;
 					osi.dwOSVersionInfoSize = sizeof(osi);
 					GetVersionEx(&osi);
@@ -262,8 +262,7 @@ public:
 						MSCDEX_SetCDInterface(CDROM_USE_IOCTL_DX, num);
 					} else {
 						MSCDEX_SetCDInterface(CDROM_USE_IOCTL_DIO, num);
-					} */
-					MSCDEX_SetCDInterface(CDROM_USE_IOCTL_DX, num);
+					}
 #else
 					MSCDEX_SetCDInterface(CDROM_USE_IOCTL_DIO, num);
 #endif
@@ -446,10 +445,10 @@ private:
 			}
 
 			return tmpfile;
-		/*}
+			/*}
 		catch(...) {
 			return NULL;
-		}*/
+			}*/
 	}
    
 	FILE *getFSFile(char const * filename, Bit32u *ksize, Bit32u *bsize,bool tryload=false) {
@@ -815,10 +814,10 @@ public:
 
 			rom_base=PhysMake(0xf000,0);
 			phys_writeb(rom_base+0xf065,0xcf);
-		/*}
+			/*}
 		catch(...) {
 			return;
-		}*/
+			}*/
 
 		reg_flags&=~FLAG_IF;
 		CALLBACK_RunRealFar(0xc000,0x0003);
@@ -890,7 +889,7 @@ void LOADFIX::Run(void)
 	} else {
 		WriteOut(MSG_Get("PROGRAM_LOADFIX_ERROR"),kb);	
 	}
-};
+}
 
 static void LOADFIX_ProgramStart(Program * * make) {
 	*make=new LOADFIX;
@@ -911,7 +910,7 @@ void RESCAN::Run(void)
 		Drives[drive]->EmptyCache();
 		WriteOut(MSG_Get("PROGRAM_RESCAN_SUCCESS"));
 	}
-};
+}
 
 static void RESCAN_ProgramStart(Program * * make) {
 	*make=new RESCAN;
@@ -1331,7 +1330,7 @@ void KEYB::Run(void) {
 			WriteOut(MSG_Get("PROGRAM_KEYB_INFO_LAYOUT"),dos.loaded_codepage,layout_name);
 		}
 	}
-};
+}
 
 static void KEYB_ProgramStart(Program * * make) {
 	*make=new KEYB;
