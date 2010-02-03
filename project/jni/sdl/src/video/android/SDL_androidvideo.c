@@ -92,7 +92,7 @@ static int sWindowWidth  = 320;
 static int sWindowHeight = 480;
 static SDL_mutex * WaitForNativeRender = NULL;
 static SDL_cond * WaitForNativeRender1 = NULL;
-static enum { Render_State_Started, Render_State_Processing, Render_State_Finished } 
+static enum { Render_State_Started, Render_State_Processing, Render_State_Finished }
 	WaitForNativeRenderState = Render_State_Finished;
 // Pointer to in-memory video surface
 static int memX = 0;
@@ -226,7 +226,7 @@ SDL_Surface *ANDROID_SetVideoMode(_THIS, SDL_Surface *current,
 
 	memX = width;
 	memY = height;
-	
+
 	memBuffer1 = SDL_malloc(memX * memY * (bpp / 8));
 	if ( ! memBuffer1 ) {
 		SDL_SetError("Couldn't allocate buffer for requested mode");
@@ -261,7 +261,7 @@ SDL_Surface *ANDROID_SetVideoMode(_THIS, SDL_Surface *current,
 	current->h = height;
 	current->pitch = memX * (bpp / 8);
 	current->pixels = memBuffer;
-	
+
 	/* Wait 'till we can draw */
 	ANDROID_FlipHWSurface(this, current);
 	/* We're done */
@@ -291,7 +291,7 @@ void ANDROID_VideoQuit(_THIS)
 	WaitForNativeRender1 = NULL;
 
 	int i;
-	
+
 	if (this->screen->pixels != NULL)
 	{
 		SDL_free(this->screen->pixels);
@@ -354,7 +354,7 @@ static int ANDROID_FlipHWSurface(_THIS, SDL_Surface *surface)
 	WaitForNativeRenderState = Render_State_Started;
 
 	SDL_CondSignal(WaitForNativeRender1);
-	
+
 	if( surface->flags & SDL_DOUBLEBUF )
 	{
 
@@ -387,7 +387,7 @@ static int ANDROID_FlipHWSurface(_THIS, SDL_Surface *surface)
 	SDL_mutexV(WaitForNativeRender);
 
 	processAndroidTrackballKeyDelays( -1, 0 );
-	
+
 	return(0);
 };
 
@@ -404,8 +404,8 @@ static int SDLCALL MainThreadWrapper(void * dummy)
 	int argc = 1;
 	char * argv[] = { "sdl" };
 	chdir(SDL_CURDIR_PATH);
-	//return main( argc, argv );
-	return 1;
+	return main( argc, argv );
+	//return 1;
 };
 
 #ifndef SDL_JAVA_PACKAGE_PATH
@@ -487,7 +487,7 @@ static int processAndroidTrackballKeyDelays( int key, int action )
 	static const int KeysMapping[4] = {KEYCODE_DPAD_UP, KEYCODE_DPAD_DOWN, KEYCODE_DPAD_LEFT, KEYCODE_DPAD_RIGHT};
 	int idx, idx2;
 	SDL_keysym keysym;
-	
+
 	if( key < 0 )
 	{
 		for( idx = 0; idx < 4; idx ++ )
@@ -541,7 +541,7 @@ static int processAndroidTrackballKeyDelays( int key, int action )
 		}
 	}
 	return 0;
-	
+
 	#endif
 }
 
@@ -566,7 +566,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 		0, 1,
 		1, 1,
 	};
-	
+
 	// Set up an array of values for the texture coordinates.
 	static GLfloat texcoords[] =
 	{
@@ -575,12 +575,12 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 		0, 1,
 		1, 1,
 	};
-	
+
 	static GLint texcoordsCrop[] =
 	{
 		0, 0, 0, 0,
 	};
-	
+
 	static float clearColor = 0.0f;
 	static int clearColorDir = 1;
 	int textX, textY;
@@ -624,18 +624,18 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 			// Now Initialize modelview matrix
 			glMatrixMode( GL_MODELVIEW );
 			glLoadIdentity();
-			
+
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
 			glDisable(GL_DITHER);
 			glDisable(GL_MULTISAMPLE);
 
 			glEnable(GL_TEXTURE_2D);
-			
+
 			glGenTextures(1, &texture);
 
 			glBindTexture(GL_TEXTURE_2D, texture);
-	
+
 			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -643,12 +643,12 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-		
+
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 			void * textBuffer = SDL_malloc( textX*textY*2 );
 			SDL_memset( textBuffer, 0, textX*textY*2 );
-			
+
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, textX, textY, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, textBuffer);
 
 			glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -660,16 +660,16 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 			glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
 
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-			
+
 			// GLES extension (should be faster)
 			texcoordsCrop[0] = 0;
 			texcoordsCrop[1] = memY;
 			texcoordsCrop[2] = memX;
 			texcoordsCrop[3] = -memY;
 			glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_CROP_RECT_OES, texcoordsCrop);
-			
+
 			glFinish();
-			
+
 			SDL_free( textBuffer );
 		}
 		else if( openglInitialized == GL_State_Uninit )
@@ -687,10 +687,10 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 		if( WaitForNativeRender )
 		{
 			SDL_mutexP(WaitForNativeRender);
-		
+
 			WaitForNativeRenderState = Render_State_Finished;
 			SDL_CondSignal(WaitForNativeRender1);
-		
+
 			while( WaitForNativeRenderState != Render_State_Started )
 			{
 				if( SDL_CondWaitTimeout( WaitForNativeRender1, WaitForNativeRender, 1000 ) != 0 )
@@ -700,13 +700,13 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 					return;
 				}
 			}
-		
+
 			memBufferTemp = memBuffer;
 
 			WaitForNativeRenderState = Render_State_Processing;
 
 			SDL_CondSignal(WaitForNativeRender1);
-	
+
 			SDL_mutexV(WaitForNativeRender);
 		}
 		else
@@ -717,7 +717,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		glDrawTexiOES(0, sWindowHeight-memY, 1, memX, memY); // GLES extension (should be faster)
 		//glFinish(); //glFlush();
-		
+
 	}
 	else
 	{
@@ -739,7 +739,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 void ANDROID_InitOSKeymap(_THIS)
 {
   int i;
-	
+
   /* Initialize the DirectFB key translation table */
   for (i=0; i<SDL_arraysize(keymap); ++i)
     keymap[i] = SDLK_UNKNOWN;

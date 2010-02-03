@@ -263,7 +263,7 @@ static void PauseDOSBox(bool pressed) {
 		SDL_WaitEvent(&event);    // since we're not polling, cpu usage drops to 0.
 		switch (event.type) {
 
-			case SDL_QUIT: 
+			case SDL_QUIT:
 				// FIXME
                 printf("bad modification!!!");
                 exit(1);
@@ -1379,7 +1379,7 @@ void GFX_Events() {
 						SDL_WaitEvent(&ev);
 
 						switch (ev.type) {
-						case SDL_QUIT: 
+						case SDL_QUIT:
 							// FIXME
 							printf("bad modification!!!");
 							exit(1);
@@ -1551,7 +1551,7 @@ static void show_warning(char const * const message) {
 	Bit32u bmask = 0x0000ff00;
 #else
 	Bit32u rmask = 0x000000ff;
-	Bit32u gmask = 0x0000ff00;                    
+	Bit32u gmask = 0x0000ff00;
 	Bit32u bmask = 0x00ff0000;
 #endif
 	SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
@@ -1560,22 +1560,22 @@ static void show_warning(char const * const message) {
 	int x = 120,y = 20;
 	std::string m(message),m2;
 	std::string::size_type a,b,c,d;
-   
+
 	while(m.size()) { //Max 50 characters. break on space before or on a newline
 		c = m.find('\n');
 		d = m.rfind(' ',50);
 		if(c>d) a=b=d; else a=b=c;
-		if( a != std::string::npos) b++; 
+		if( a != std::string::npos) b++;
 		m2 = m.substr(0,a); m.erase(0,b);
 		OutputString(x,y,m2.c_str(),0xffffffff,0,splash_surf);
 		y += 20;
 	}
-   
+
 	SDL_BlitSurface(splash_surf, NULL, sdl.surface, NULL);
 	SDL_Flip(sdl.surface);
 	SDL_Delay(10000);
 }
-   
+
 static void launcheditor() {
 	std::string path,file;
 	Cross::CreatePlatformConfigDir(path);
@@ -1630,7 +1630,7 @@ static void printconfiglocation() {
 	Cross::CreatePlatformConfigDir(path);
 	Cross::GetPlatformConfigName(file);
 	path += file;
-     
+
 	FILE* f = fopen(path.c_str(),"r");
 	if(!f && !control->PrintConfig(path.c_str())) {
 		printf("tried creating %s. but failed",path.c_str());
@@ -1659,7 +1659,7 @@ static void eraseconfigfile() {
 }
 
 
-#if 0
+#if 1
 //extern void UI_Init(void);
 int main(int argc, char* argv[]) {
 	try {
@@ -1836,7 +1836,7 @@ int main(int argc, char* argv[]) {
 		control->StartUp();
 		/* Shutdown everything */
 	} catch (char * error) {
-		GFX_ShowMsg("Exit to error: %s",error);
+		// GFX_ShowMsg("Exit to error: %s",error);
 		fflush(NULL);
 		if(sdl.wait_on_error) {
 			//TODO Maybe look for some way to show message in linux?
@@ -1857,7 +1857,8 @@ int main(int argc, char* argv[]) {
 		//Force visible mouse to end user. Somehow this sometimes doesn't happen
 		SDL_WM_GrabInput(SDL_GRAB_OFF);
 		SDL_ShowCursor(SDL_ENABLE);
-		throw;//dunno what happened. rethrow for sdl to catch
+        // FIXME
+		//throw;//dunno what happened. rethrow for sdl to catch
 	}
 	//Force visible mouse to end user. Somehow this sometimes doesn't happen
 	SDL_WM_GrabInput(SDL_GRAB_OFF);
@@ -1866,7 +1867,7 @@ int main(int argc, char* argv[]) {
 	SDL_Quit();//Let's hope sdl will quit as well when it catches an exception
 	return 0;
 }
-#endif 
+#endif
 
 void GFX_GetSize(int &width, int &height, bool &fullscreen) {
 	width = sdl.draw.width;

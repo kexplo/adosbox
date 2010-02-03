@@ -296,3 +296,16 @@ typedef         double     Real64;
  #endif
 
 
+
+// added by Gerald
+#ifndef __EXCEPTIONS
+// Iff -fno-exceptions, transform error handling code to work without it.
+# define try      if (true)
+# define catch(X) if (false)
+//# define throw
+#else
+// Else proceed normally.
+# define try      try
+# define catch(X) catch(X)
+#endif
+
