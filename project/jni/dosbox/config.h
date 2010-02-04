@@ -309,3 +309,19 @@ typedef         double     Real64;
 # define catch(X) catch(X)
 #endif
 
+#include <stdio.h>
+
+#if 0
+//Not correct for invocations like printf(message).
+//correct for invocations like printf("format", variables)
+#define printf(fmt, args... ) \
+    fprintf( stdout, "%s:%d:\n    "fmt, __FILE__, __LINE__, ##args ); \
+    fflush( stdout )
+#endif
+
+#define printf(fmt, args...) \
+    printf("%s:%d:\n    ", __FILE__, __LINE__); \
+    printf(fmt, ##args)
+
+#define DEBUG 1
+
