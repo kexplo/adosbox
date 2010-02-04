@@ -53,7 +53,7 @@ extern int old_cursor_state;
 
 
 void DEBUG_ShowMsg(char const* format,...) {
-	
+
 	char buf[512];
 	va_list msg;
 	va_start(msg,format);
@@ -177,7 +177,7 @@ static void MakeSubWindows(void) {
 	/* The Variable Window */
 	dbg.win_var=subwin(dbg.win_main,4,win_main_maxx,outy,0);
 	outy+=5;
-	/* The Output Window */	
+	/* The Output Window */
 	dbg.win_out=subwin(dbg.win_main,win_main_maxy-outy-1,win_main_maxx,outy,0);
 	dbg.input_y=win_main_maxy-1;
 	scrollok(dbg.win_out,TRUE);
@@ -224,7 +224,7 @@ void LOG_StartUp(void) {
 	loggrp[LOG_INT10].front="INT10";
 	loggrp[LOG_SB].front="SBLASTER";
 	loggrp[LOG_DMACONTROL].front="DMA_CONTROL";
-	
+
 	loggrp[LOG_FPU].front="FPU";
 	loggrp[LOG_CPU].front="CPU";
 	loggrp[LOG_PAGING].front="PAGING";
@@ -245,10 +245,12 @@ void LOG_StartUp(void) {
 	loggrp[LOG_MISC].front="MISC";
 
 	loggrp[LOG_IO].front="IO";
-	
+
 	/* Register the log section */
 	Section_prop * sect=control->AddSection_prop("log",LOG_Init);
-	Prop_string* Pstring = sect->Add_string("logfile",Property::Changeable::Always,"");
+	Prop_string* Pstring = sect->Add_string("logfile",Property::Changeable::Always,
+            "/data/data/de.schwardtnet.alienblaster/files/dosbox.log");
+            //"");
 	Pstring->Set_help("file where the log messages will be saved to");
 	char buf[1024];
 	for (Bitu i=1;i<LOG_MAX;i++) {
