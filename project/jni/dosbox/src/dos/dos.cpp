@@ -71,7 +71,7 @@ static Bitu DOS_21Handler(void) {
 	char name2[DOSNAMEBUF+2+DOS_NAMELENGTH_ASCII];
 	switch (reg_ah) {
 	case 0x01:		/* Read character from STDIN, with echo */
-		{	
+		{
 			Bit8u c;Bit16u n=1;
 			dos.echo=true;
 			DOS_ReadFile(STDIN,&c,&n);
@@ -114,7 +114,7 @@ static Bitu DOS_21Handler(void) {
 	case 0x06:		/* Direct Console Output / Input */
 		switch (reg_dl) {
 		case 0xFF:	/* Input */
-			{	
+			{
 //TODO Make this better according to standards
 				if (!DOS_GetSTDINStatus()) {
 					reg_al=0;
@@ -151,7 +151,7 @@ static Bitu DOS_21Handler(void) {
 				break;
 		};
 	case 0x09:		/* Write string to STDOUT */
-		{	
+		{
 			Bit8u c;Bit16u n=1;
 			PhysPt buf=SegPhys(ds)+reg_dx;
 			while ((c=mem_readb(buf++))!='$') {
@@ -185,7 +185,7 @@ static Bitu DOS_21Handler(void) {
 				}
 				DOS_WriteFile(STDOUT,&c,&n);
 				mem_writeb(data+read+2,c);
-				if (c==13) 
+				if (c==13)
 					break;
 				read++;
 			};
@@ -209,7 +209,7 @@ static Bitu DOS_21Handler(void) {
 			case 0x7:
 			case 0x8:
 			case 0xa:
-				{ 
+				{
 					Bit8u oldah=reg_ah;
 					reg_ah=reg_al;
 					DOS_21Handler();
@@ -227,7 +227,7 @@ static Bitu DOS_21Handler(void) {
 //TODO Hope this doesn't do anything special
 	case 0x0d:		/* Disk Reset */
 //Sure let's reset a virtual disk
-		break;	
+		break;
 	case 0x0e:		/* Select Default Drive */
 		DOS_SetDefaultDrive(reg_dl);
 		reg_al=DOS_DRIVES;
@@ -276,11 +276,11 @@ static Bitu DOS_21Handler(void) {
 		else reg_al = 0xFF;
 		LOG(LOG_FCB,LOG_NORMAL)("DOS:0x16 FCB-Create used, result:al=%d",reg_al);
 		break;
-	case 0x17:		/* Rename file using FCB */		
+	case 0x17:		/* Rename file using FCB */
 		if (DOS_FCBRenameFile(SegValue(ds),reg_dx)) reg_al = 0x00;
 		else reg_al = 0xFF;
 		break;
-	case 0x1b:		/* Get allocation info for default drive */	
+	case 0x1b:		/* Get allocation info for default drive */
 		if (!DOS_GetAllocationInfo(0,&reg_cx,&reg_al,&reg_dx)) reg_al=0xff;
 		break;
 	case 0x1c:		/* Get allocation info for specific drive */
@@ -310,7 +310,7 @@ static Bitu DOS_21Handler(void) {
 		LOG(LOG_FCB,LOG_NORMAL)("DOS:0x28 FCB-Random(block) write used, result:al=%d",reg_al);
 		break;
 	case 0x29:		/* Parse filename into FCB */
-		{   
+		{
 			Bit8u difference;
 			char string[1024];
 			MEM_StrCopy(SegPhys(ds)+reg_si,string,1023); // 1024 toasts the stack
@@ -368,7 +368,7 @@ static Bitu DOS_21Handler(void) {
 		LOG(LOG_DOSMISC,LOG_ERROR)("DOS:Set System Time not supported");
 		//Check input parameters nonetheless
 		if( reg_ch > 23 || reg_cl > 59 || reg_dh > 59 || reg_dl > 99 )
-			reg_al = 0xff; 
+			reg_al = 0xff;
 		else reg_al = 0;
 		break;
 	case 0x2e:		/* Set Verify flag */
@@ -426,7 +426,7 @@ static Bitu DOS_21Handler(void) {
 				reg_dh=0x10;								/* Dos in HMA */
 				break;
 			default:
-				E_Exit("DOS:Illegal 0x33 Call %2X",reg_al);					
+				E_Exit("DOS:Illegal 0x33 Call %2X",reg_al);
 		}
 		break;
 	case 0x34:		/* Get INDos Flag */
@@ -473,7 +473,7 @@ static Bitu DOS_21Handler(void) {
 		};
 		LOG(LOG_MISC,LOG_ERROR)("DOS:0x37:Call for not supported switchchar");
 		break;
-	case 0x38:					/* Set Country Code */	
+	case 0x38:					/* Set Country Code */
 		if (reg_al==0) {		/* Get country specidic information */
 			PhysPt dest = SegPhys(ds)+reg_dx;
 			MEM_BlockWrite(dest,dos.tables.country,0x18);
@@ -540,7 +540,7 @@ static Bitu DOS_21Handler(void) {
 		}
 		break;
 	case 0x3f:		/* READ Read from file or device */
-		{ 
+		{
 			Bit16u toread=reg_cx;
 			dos.echo=true;
 			if (DOS_ReadFile(reg_bx,dos_copybuf,&toread)) {
@@ -599,7 +599,7 @@ static Bitu DOS_21Handler(void) {
 				Bit16u attr_val=reg_cx;
 				if (DOS_GetFileAttr(name1,&attr_val)) {
 					reg_cx=attr_val;
-					reg_ax=attr_val; /* Undocumented */   
+					reg_ax=attr_val; /* Undocumented */
 					CALLBACK_SCF(false);
 				} else {
 					CALLBACK_SCF(true);
@@ -651,7 +651,7 @@ static Bitu DOS_21Handler(void) {
 		break;
 	case 0x47:					/* CWD Get current directory */
 		if (DOS_GetCurrentDir(reg_dl,name1)) {
-			MEM_BlockWrite(SegPhys(ds)+reg_si,name1,(Bitu)(strlen(name1)+1));	
+			MEM_BlockWrite(SegPhys(ds)+reg_si,name1,(Bitu)(strlen(name1)+1));
 			reg_ax=0x0100;
 			CALLBACK_SCF(false);
 		} else {
@@ -675,7 +675,7 @@ static Bitu DOS_21Handler(void) {
 	case 0x49:					/* Free memory */
 		if (DOS_FreeMemory(SegValue(es))) {
 			CALLBACK_SCF(false);
-		} else {            
+		} else {
 			reg_ax=dos.errorcode;
 			CALLBACK_SCF(true);
 		}
@@ -686,7 +686,7 @@ static Bitu DOS_21Handler(void) {
 			if (DOS_ResizeMemory(SegValue(es),&size)) {
 				reg_ax=SegValue(es);
 				CALLBACK_SCF(false);
-			} else {            
+			} else {
 				reg_ax=dos.errorcode;
 				reg_bx=size;
 				CALLBACK_SCF(true);
@@ -694,7 +694,7 @@ static Bitu DOS_21Handler(void) {
 			break;
 		}
 	case 0x4b:					/* EXEC Load and/or execute program */
-		{ 
+		{
 			MEM_StrCopy(SegPhys(ds)+reg_dx,name1,DOSNAMEBUF);
 			LOG(LOG_EXEC,LOG_ERROR)("Execute %s %d",name1,reg_al);
 			if (!DOS_Execute(name1,SegPhys(es)+reg_bx,reg_al)) {
@@ -710,7 +710,7 @@ static Bitu DOS_21Handler(void) {
 	        {
 			if (DOS_Terminate(false,reg_al)) {
 				/* This can't ever return false normally */
-			} else {            
+			} else {
 				reg_ax=dos.errorcode;
 				CALLBACK_SCF(true);
 			}
@@ -723,13 +723,13 @@ static Bitu DOS_21Handler(void) {
 	case 0x4e:					/* FINDFIRST Find first matching file */
 		MEM_StrCopy(SegPhys(ds)+reg_dx,name1,DOSNAMEBUF);
 		if (DOS_FindFirst(name1,reg_cx)) {
-			CALLBACK_SCF(false);	
+			CALLBACK_SCF(false);
 			reg_ax=0;			/* Undocumented */
 		} else {
 			reg_ax=dos.errorcode;
 			CALLBACK_SCF(true);
 		};
-		break;		 
+		break;
 	case 0x4f:					/* FINDNEXT Find next matching file */
 		if (DOS_FindNext()) {
 			CALLBACK_SCF(false);
@@ -739,7 +739,7 @@ static Bitu DOS_21Handler(void) {
 			reg_ax=dos.errorcode;
 			CALLBACK_SCF(true);
 		};
-		break;		
+		break;
 	case 0x50:					/* Set current PSP */
 		dos.psp(reg_bx);
 		break;
@@ -768,12 +768,12 @@ static Bitu DOS_21Handler(void) {
 		MEM_StrCopy(SegPhys(ds)+reg_dx,name1,DOSNAMEBUF);
 		MEM_StrCopy(SegPhys(es)+reg_di,name2,DOSNAMEBUF);
 		if (DOS_Rename(name1,name2)) {
-			CALLBACK_SCF(false);			
+			CALLBACK_SCF(false);
 		} else {
 			reg_ax=dos.errorcode;
 			CALLBACK_SCF(true);
 		}
-		break;		
+		break;
 	case 0x57:					/* Get/Set File's Date and Time */
 		if (reg_al==0x00) {
 			if (DOS_GetFileDate(reg_bx,&reg_cx,&reg_dx)) {
@@ -783,7 +783,7 @@ static Bitu DOS_21Handler(void) {
 			}
 		} else if (reg_al==0x01) {
 			LOG(LOG_DOSMISC,LOG_ERROR)("DOS:57:Set File Date Time Faked");
-			CALLBACK_SCF(false);		
+			CALLBACK_SCF(false);
 		} else {
 			LOG(LOG_DOSMISC,LOG_ERROR)("DOS:57:Unsupported subtion %X",reg_al);
 		}
@@ -872,11 +872,11 @@ static Bitu DOS_21Handler(void) {
 	case 0x5f:					/* Network redirection */
 		reg_ax=0x0001;		//Failing it
 		CALLBACK_SCF(true);
-		break; 
+		break;
 	case 0x60:					/* Canonicalize filename or path */
 		MEM_StrCopy(SegPhys(ds)+reg_si,name1,DOSNAMEBUF);
 		if (DOS_Canonicalize(name1,name2)) {
-				MEM_BlockWrite(SegPhys(es)+reg_di,name2,(Bitu)(strlen(name2)+1));	
+				MEM_BlockWrite(SegPhys(es)+reg_di,name2,(Bitu)(strlen(name2)+1));
 				CALLBACK_SCF(false);
 			} else {
 				reg_ax=dos.errorcode;
@@ -889,7 +889,7 @@ static Bitu DOS_21Handler(void) {
 	case 0x63:					/* DOUBLE BYTE CHARACTER SET */
 		if(reg_al == 0) {
 			SegSet16(ds,RealSeg(dos.tables.dbcs));
-			reg_si=RealOff(dos.tables.dbcs);		
+			reg_si=RealOff(dos.tables.dbcs);
 			reg_al = 0;
 			CALLBACK_SCF(false); //undocumented
 		} else reg_al = 0xff; //Doesn't officially touch carry flag
@@ -898,7 +898,7 @@ static Bitu DOS_21Handler(void) {
 		LOG(LOG_DOSMISC,LOG_NORMAL)("set driver look ahead flag");
 		break;
 	case 0x65:					/* Get extented country information and a lot of other useless shit*/
-		{ /* Todo maybe fully support this for now we set it standard for USA */ 
+		{ /* Todo maybe fully support this for now we set it standard for USA */
 			LOG(LOG_DOSMISC,LOG_ERROR)("DOS:65:Extended country information call %X",reg_ax);
 			if((reg_al <=  0x07) && (reg_cx < 0x05)) {
 				DOS_SetError(DOSERR_FUNCTION_NUMBER_INVALID);
@@ -952,7 +952,7 @@ static Bitu DOS_21Handler(void) {
 			case 0x21: /* Capitalize String (cx=length) */
 			case 0x22: /* Capatilize ASCIZ string */
 				data = SegPhys(ds) + reg_dx;
-				if(reg_al == 0x21) len = reg_cx; 
+				if(reg_al == 0x21) len = reg_cx;
 				else len = mem_strlen(data); /* Is limited to 1024 */
 
 				if(len > DOS_COPYBUFSIZE - 1) E_Exit("DOS:0x65 Buffer overflow");
@@ -967,7 +967,7 @@ static Bitu DOS_21Handler(void) {
 				CALLBACK_SCF(false);
 				break;
 			default:
-				E_Exit("DOS:0x65:Unhandled country information call %2X",reg_al);	
+				E_Exit("DOS:0x65:Unhandled country information call %2X",reg_al);
 			};
 			break;
 		}
@@ -1007,9 +1007,9 @@ static Bitu DOS_21Handler(void) {
 				LOG(LOG_DOSMISC,LOG_ERROR)("DOS:Set Disk serial number");
 			default:
 				E_Exit("DOS:Illegal Get Serial Number call %2X",reg_al);
-			}	
+			}
 			break;
-		} 
+		}
 	case 0x6c:					/* Extended Open/Create */
 		MEM_StrCopy(SegPhys(ds)+reg_si,name1,DOSNAMEBUF);
 		if (DOS_OpenFileExtended(name1,reg_bx,reg_cx,reg_dx,&reg_ax,&reg_cx)) {
@@ -1088,6 +1088,8 @@ private:
 	CALLBACK_HandlerObject callback[7];
 public:
 	DOS(Section* configuration):Module_base(configuration){
+        printf("\n\n");
+
 		callback[0].Install(DOS_20Handler,CB_IRET,"DOS Int 20");
 		callback[0].Set_RealVec(0x20);
 
@@ -1095,7 +1097,7 @@ public:
 		callback[1].Set_RealVec(0x21);
 	//Pseudo code for int 21
 	// sti
-	// callback 
+	// callback
 	// iret
 	// retf  <- int 21 4c jumps here to mimic a retf Cyber
 
@@ -1120,27 +1122,38 @@ public:
 		//	pop ax
 		//	iret
 
+        printf("\n\n");
 		DOS_SetupFiles();								/* Setup system File tables */
+        printf("\n\n");
 		DOS_SetupDevices();							/* Setup dos devices */
+        printf("\n\n");
 		DOS_SetupTables();
+        printf("\n\n");
 		DOS_SetupMemory();								/* Setup first MCB */
+        printf("\n\n");
 		DOS_SetupPrograms();
+        printf("\n\n");
 		DOS_SetupMisc();							/* Some additional dos interrupts */
+        printf("\n\n");
 		DOS_SDA(DOS_SDA_SEG,DOS_SDA_OFS).SetDrive(25); /* Else the next call gives a warning. */
 		DOS_SetDefaultDrive(25);
-	
+
+        printf("\n\n");
 		dos.version.major=5;
 		dos.version.minor=0;
-	
+
 		/* Setup time and date */
 		time_t curtime;struct tm *loctime;
 		curtime = time (NULL);loctime = localtime (&curtime);
-	
+        printf("\n\n");
+
 		dos.date.day=(Bit8u)loctime->tm_mday;
 		dos.date.month=(Bit8u)loctime->tm_mon+1;
 		dos.date.year=(Bit16u)loctime->tm_year+1900;
 		Bit32u ticks=(Bit32u)((loctime->tm_hour*3600+loctime->tm_min*60+loctime->tm_sec)*(float)PIT_TICK_RATE/65536.0);
+        printf("\n\n");
 		mem_writed(BIOS_TIMER,ticks);
+        printf("\n\n");
 	}
 	~DOS(){
 		for (Bit16u i=0;i<DOS_DRIVES;i++) delete Drives[i];
@@ -1157,4 +1170,5 @@ void DOS_Init(Section* sec) {
 	test = new DOS(sec);
 	/* shutdown function */
 	sec->AddDestroyFunction(&DOS_ShutDown,false);
+    printf("\n\n");
 }

@@ -321,7 +321,8 @@ typedef         double     Real64;
 
 #define printf(fmt, args...) \
     printf("%s:%d:\n    ", __FILE__, __LINE__); \
-    printf(fmt, ##args)
+    printf(fmt, ##args); \
+    fflush(stdout)
 
 //#define DEBUG 1
 

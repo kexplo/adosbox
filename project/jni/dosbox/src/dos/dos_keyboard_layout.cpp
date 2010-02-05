@@ -47,14 +47,20 @@ static FILE* OpenDosboxFile(const char* name) {
 	if (DOS_MakeName(name,fullname,&drive)) {
 	  //try {
 			// try to open file on mounted drive first
+        printf("\n\n");
 			ldp=static_cast<localDrive*>(Drives[drive]);
+        printf("\n%s\n", fullname);
 			if (ldp) {
+                printf("\n\n");
 				FILE *tmpfile=ldp->GetSystemFilePtr(fullname, "rb");
+                printf("\n\n");
 				if (tmpfile != NULL) return tmpfile;
 			}
+        printf("\n\n");
 			//}
 			//catch(...) {}
 	}
+    printf("\nfilename:%s\n", name);
 	FILE *tmpfile=fopen(name, "rb");
 	return tmpfile;
 }
@@ -320,7 +326,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 			LOG(LOG_BIOS,LOG_ERROR)("Invalid keyboard layout file %s",keyboard_file_name);
 			return KEYB_INVALIDFILE;
 		}
-		
+
 		fseek(tempfile, 0, SEEK_SET);
 		read_buf_size=(Bit32u)fread(read_buf, sizeof(Bit8u), 65535, tempfile);
 		fclose(tempfile);
@@ -380,7 +386,7 @@ Bitu keyboard_layout::read_keyboard_file(const char* keyboard_file_name, Bit32s 
 	}
 
 	bool found_matching_layout=false;
-	
+
 	// check all submappings and use them if general submapping or same codepage submapping
 	for (Bit16u sub_map=0; (sub_map<submappings) && (!found_matching_layout); sub_map++) {
 		Bit16u submap_cp, table_offset;
@@ -607,6 +613,7 @@ bool keyboard_layout::map_key(Bitu key, Bit16u layouted_key, bool is_command, bo
 }
 
 Bit16u keyboard_layout::extract_codepage(const char* keyboard_file_name) {
+    printf("\n%s\n", keyboard_file_name);
 	if (!strcmp(keyboard_file_name,"none")) return 437;
 
 	Bit32u read_buf_size;
@@ -615,8 +622,11 @@ Bit16u keyboard_layout::extract_codepage(const char* keyboard_file_name) {
 
 	char nbuf[512];
 	sprintf(nbuf, "%s.kl", keyboard_file_name);
+    printf("\n%s\n", nbuf);
 	FILE* tempfile = OpenDosboxFile(nbuf);
+    printf("\nopen\n");
 	if (tempfile==NULL) {
+        printf("\nfile null\n");
 		// try keyboard layout libraries next
 		if ((start_pos=read_kcl_file("keyboard.sys",keyboard_file_name,true))) {
 			tempfile = OpenDosboxFile("keyboard.sys");
@@ -701,7 +711,7 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 	if (!strcmp(cp_filename,"auto")) {
 		// select matching .cpi-file for specified codepage
 		switch (codepage_id) {
-			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:	
+			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:
 						sprintf(cp_filename, "EGA.CPI"); break;
 			case 775:	case 859:	case 1116:	case 1117:
 						sprintf(cp_filename, "EGA2.CPI"); break;
@@ -756,7 +766,7 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 	if (tempfile==NULL) {
 		// check if build-in codepage is available
 		switch (codepage_id) {
-			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:	
+			case 437:	case 850:	case 852:	case 853:	case 857:	case 858:
 						for (Bitu bct=0; bct<6322; bct++) cpi_buf[bct]=font_ega_cpx[bct];
 						cpi_buf_size=6322;
 						break;
@@ -768,7 +778,7 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 						for (Bitu bct=0; bct<5720; bct++) cpi_buf[bct]=font_ega5_cpx[bct];
 						cpi_buf_size=5720;
 						break;
-			default: 
+			default:
 				return KEYB_INVALIDCPFILE;
 				break;
 		}
@@ -783,10 +793,10 @@ Bitu keyboard_layout::read_codepage_file(const char* codepage_file_name, Bit32s 
 			return KEYB_INVALIDCPFILE;
 		}
 		// check if non-compressed cpi file
-		if ((cpi_buf[0]!=0xff) || (cpi_buf[1]!=0x46) || (cpi_buf[2]!=0x4f) || 
+		if ((cpi_buf[0]!=0xff) || (cpi_buf[1]!=0x46) || (cpi_buf[2]!=0x4f) ||
 			(cpi_buf[3]!=0x4e) || (cpi_buf[4]!=0x54)) {
 			// check if dr-dos custom cpi file
-			if ((cpi_buf[0]==0x7f) && (cpi_buf[1]!=0x44) && (cpi_buf[2]!=0x52) && 
+			if ((cpi_buf[0]==0x7f) && (cpi_buf[1]!=0x44) && (cpi_buf[2]!=0x52) &&
 				(cpi_buf[3]!=0x46) && (cpi_buf[4]!=0x5f)) {
 				LOG(LOG_BIOS,LOG_ERROR)("Codepage file %s has unsupported DR-DOS format",cp_filename);
 				return KEYB_INVALIDCPFILE;
@@ -1085,11 +1095,15 @@ const char* DOS_GetLoadedLayout(void) {
 class DOS_KeyboardLayout: public Module_base {
 public:
 	DOS_KeyboardLayout(Section* configuration):Module_base(configuration){
+        printf("\n\n");
 		Section_prop * section=static_cast<Section_prop *>(configuration);
 		dos.loaded_codepage=437;	// US codepage already initialized
+        printf("\n\n");
 		loaded_layout=new keyboard_layout();
+        printf("\n\n");
 
 		const char * layoutname=section->Get_string("keyboardlayout");
+        printf("\n\n");
 
 		Bits wants_dos_codepage = -1;
 		if (!strncmp(layoutname,"auto",4)) {
@@ -1239,6 +1253,7 @@ public:
 #endif
 		}
 
+        printf("\n\n");
 		bool extract_codepage = true;
 		if (wants_dos_codepage>0) {
 			if ((loaded_layout->read_codepage_file("auto", (Bitu)wants_dos_codepage)) == KEYB_NOERROR) {
@@ -1246,15 +1261,18 @@ public:
 				extract_codepage = false;
 			}
 		}
+        printf("\n\n");
 		if (extract_codepage) {
 			// try to find a good codepage for the requested layout
 			Bitu req_codepage = loaded_layout->extract_codepage(layoutname);
 			loaded_layout->read_codepage_file("auto", req_codepage);
 		}
+        printf("\n\n");
 
 /*		if (strncmp(layoutname,"auto",4) && strncmp(layoutname,"none",4)) {
 			LOG_MSG("Loading DOS keyboard layout %s ...",layoutname);
 		} */
+        printf("\n\n");
 		if (loaded_layout->read_keyboard_file(layoutname, dos.loaded_codepage)) {
 			if (strncmp(layoutname,"auto",4)) {
 				LOG_MSG("Error loading keyboard layout %s",layoutname);
@@ -1265,6 +1283,7 @@ public:
 				LOG_MSG("DOS keyboard layout loaded with main language code %s for layout %s",lcode,layoutname);
 			}
 		}
+        printf("\n\n");
 	}
 
 	~DOS_KeyboardLayout(){
@@ -1282,11 +1301,13 @@ public:
 static DOS_KeyboardLayout* test;
 
 void DOS_KeyboardLayout_ShutDown(Section* /*sec*/) {
-	delete test;	
+	delete test;
 }
 
 void DOS_KeyboardLayout_Init(Section* sec) {
+    printf("\n\n");
 	test = new DOS_KeyboardLayout(sec);
 	sec->AddDestroyFunction(&DOS_KeyboardLayout_ShutDown,true);
+    printf("\n\n");
 //	MAPPER_AddHandler(switch_keyboard_layout,MK_f2,MMOD1|MMOD2,"sw_layout","Switch Layout");
 }
