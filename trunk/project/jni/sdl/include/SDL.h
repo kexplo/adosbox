@@ -49,6 +49,12 @@
 extern "C" {
 #endif
 
+// FIXME: Gerald
+#define printf(fmt, args...) \
+        printf("%s:%d:\n    ", __FILE__, __LINE__); \
+        printf(fmt, ##args); \
+        fflush(stdout)
+
 /** @file SDL.h
  *  @note As of version 0.5, SDL is loaded dynamically into the application
  */
@@ -68,7 +74,7 @@ extern "C" {
 #define SDL_INIT_EVERYTHING	0x0000FFFF
 /*@}*/
 
-/** This function loads the SDL dynamically linked library and initializes 
+/** This function loads the SDL dynamically linked library and initializes
  *  the subsystems specified by 'flags' (and those satisfying dependencies)
  *  Unless the SDL_INIT_NOPARACHUTE flag is set, it will install cleanup
  *  signal handlers for some commonly ignored fatal signals (like SIGSEGV)

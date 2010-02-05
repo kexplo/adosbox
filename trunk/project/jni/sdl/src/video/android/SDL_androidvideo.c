@@ -402,6 +402,7 @@ extern int main( int argc, char ** argv );
 static int SDLCALL MainThreadWrapper(void * dummy)
 {
     freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
+    freopen("/data/data/de.schwardtnet.alienblaster/files/debug.err", "w+", stderr);
 	int argc = 1;
 	char * argv[] = { "sdl" };
 	chdir(SDL_CURDIR_PATH);
