@@ -1088,8 +1088,6 @@ private:
 	CALLBACK_HandlerObject callback[7];
 public:
 	DOS(Section* configuration):Module_base(configuration){
-        printf("\n\n");
-
 		callback[0].Install(DOS_20Handler,CB_IRET,"DOS Int 20");
 		callback[0].Set_RealVec(0x20);
 
@@ -1122,38 +1120,27 @@ public:
 		//	pop ax
 		//	iret
 
-        printf("\n\n");
 		DOS_SetupFiles();								/* Setup system File tables */
-        printf("\n\n");
 		DOS_SetupDevices();							/* Setup dos devices */
-        printf("\n\n");
 		DOS_SetupTables();
-        printf("\n\n");
 		DOS_SetupMemory();								/* Setup first MCB */
-        printf("\n\n");
 		DOS_SetupPrograms();
-        printf("\n\n");
 		DOS_SetupMisc();							/* Some additional dos interrupts */
-        printf("\n\n");
 		DOS_SDA(DOS_SDA_SEG,DOS_SDA_OFS).SetDrive(25); /* Else the next call gives a warning. */
 		DOS_SetDefaultDrive(25);
 
-        printf("\n\n");
 		dos.version.major=5;
 		dos.version.minor=0;
 
 		/* Setup time and date */
 		time_t curtime;struct tm *loctime;
 		curtime = time (NULL);loctime = localtime (&curtime);
-        printf("\n\n");
 
 		dos.date.day=(Bit8u)loctime->tm_mday;
 		dos.date.month=(Bit8u)loctime->tm_mon+1;
 		dos.date.year=(Bit16u)loctime->tm_year+1900;
 		Bit32u ticks=(Bit32u)((loctime->tm_hour*3600+loctime->tm_min*60+loctime->tm_sec)*(float)PIT_TICK_RATE/65536.0);
-        printf("\n\n");
 		mem_writed(BIOS_TIMER,ticks);
-        printf("\n\n");
 	}
 	~DOS(){
 		for (Bit16u i=0;i<DOS_DRIVES;i++) delete Drives[i];
@@ -1170,5 +1157,4 @@ void DOS_Init(Section* sec) {
 	test = new DOS(sec);
 	/* shutdown function */
 	sec->AddDestroyFunction(&DOS_ShutDown,false);
-    printf("\n\n");
 }

@@ -296,7 +296,6 @@ void DOS_Shell::Run(void) {
 #endif
 	if (machine == MCH_CGA) WriteOut(MSG_Get("SHELL_STARTUP_CGA"));
 	WriteOut(MSG_Get("SHELL_STARTUP_END"));
-
 	if (cmd->FindString("/INIT",line,true)) {
 		strcpy(input_line,line.c_str());
 		line.erase();
@@ -316,10 +315,14 @@ void DOS_Shell::Run(void) {
 				if (echo) WriteOut("\n");
 			}
 		} else {
+			printf("2\n");
 			if (echo) ShowPrompt();
 			InputCommand(input_line);
+printf("3\n");
 			ParseLine(input_line);
+printf("4\n");
 			if (echo && !bf) WriteOut_NoParsing("\n");
+printf("5\n");
 		}
 	} while (!exit);
 }
@@ -628,7 +631,6 @@ void SHELL_Init() {
 	dos.dta(RealMake(psp_seg,0x80));
 	dos.psp(psp_seg);
 
-	
 	SHELL_ProgramStart(&first_shell);
 	first_shell->Run();
 	delete first_shell;

@@ -116,18 +116,12 @@ bool localDrive::FileOpen(DOS_File * * file,char * name,Bit32u flags) {
 }
 
 FILE * localDrive::GetSystemFilePtr(char const * const name, char const * const type) {
-    freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
-        printf("\n\n");
+    	freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
 	char newname[CROSS_LEN];
-        printf("\n\n");
-	strcpy(newname,basedir);
-        printf("\n\n");
+       	strcpy(newname,basedir);
 	strcat(newname,name);
-        printf("\n\n");
 	CROSS_FILENAME(newname);
-        printf("\n\n");
 	dirCache.ExpandName(newname);
-        printf("\n\n");
 
 	return fopen(newname,type);
 }

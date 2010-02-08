@@ -1158,15 +1158,9 @@ static void GUI_StartUp(Section * sec) {
 #endif	//OPENGL
 	/* Initialize screen for first time */
     // FIXME: Gerald
-    printf("\nGUI_Startup:SDL_SetVideoMode");
-    fflush(stdout);
 	//sdl.surface=SDL_SetVideoMode(640,400,0,0);
 	sdl.surface=SDL_SetVideoMode(320,430,0,0);
-    printf("\nGUI_Startup:SDL_SetVideoMode ends. \nError:%s", SDL_GetError());
-    fflush(stdout);
 	if (sdl.surface == NULL) E_Exit("Could not initialize video: %s",SDL_GetError());
-    printf("\nGUI_Startup:SDL_SetVideoMode succeeded");
-    fflush(stdout);
 	sdl.desktop.bpp=sdl.surface->format->BitsPerPixel;
 	if (sdl.desktop.bpp==24) {
 		LOG_MSG("SDL:You are running in 24 bpp mode, this will slow down things!");
@@ -1186,24 +1180,17 @@ static void GUI_StartUp(Section * sec) {
 //#endif
 
 /* Please leave the Splash screen stuff in working order in DOSBox. We spend a lot of time making DOSBox. */
-    // FIXME: Gerald
-	// SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
-	SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 430, 32, rmask, gmask, bmask, 0);
+   SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
 	if (splash_surf) {
 		SDL_FillRect(splash_surf, NULL, SDL_MapRGB(splash_surf->format, 0, 0, 0));
 
-        // FIXME: Gerald
-		// Bit8u* tmpbufp = new Bit8u[640*400*3];
-		// GIMP_IMAGE_RUN_LENGTH_DECODE(tmpbufp,gimp_image.rle_pixel_data,640*400,3);
-		Bit8u* tmpbufp = new Bit8u[320*430*3];
-		GIMP_IMAGE_RUN_LENGTH_DECODE(tmpbufp,gimp_image.rle_pixel_data,320*430,3);
-		// for (Bitu y=0; y<400; y++) {
-		for (Bitu y=0; y<430; y++) {
+		Bit8u* tmpbufp = new Bit8u[640*400*3];
+		GIMP_IMAGE_RUN_LENGTH_DECODE(tmpbufp,gimp_image.rle_pixel_data,640*400,3);
+		for (Bitu y=0; y<400; y++) {
 
-			// Bit8u* tmpbuf = tmpbufp + y*640*3;
-			Bit8u* tmpbuf = tmpbufp + y*320*3;
+			Bit8u* tmpbuf = tmpbufp + y*640*3;
 			Bit32u * draw=(Bit32u*)(((Bit8u *)splash_surf->pixels)+((y)*splash_surf->pitch));
-			for (Bitu x=0; x<320; x++) {
+			for (Bitu x=0; x<640; x++) {
 //#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 //				*draw++ = tmpbuf[x*3+2]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+0]*0x10000+0x00000000;
 //#else
@@ -1252,8 +1239,6 @@ static void GUI_StartUp(Section * sec) {
 		delete [] tmpbufp;
 
 	}
-    printf("\nsplash finished.");
-    fflush(stdout);
 
 	/* Get some Event handlers */
 	MAPPER_AddHandler(KillSwitch,MK_f9,MMOD1,"shutdown","ShutDown");
@@ -1268,9 +1253,6 @@ static void GUI_StartUp(Section * sec) {
 	SDLMod keystate = SDL_GetModState();
 	if(keystate&KMOD_NUM) startup_state_numlock = true;
 	if(keystate&KMOD_CAPS) startup_state_capslock = true;
-
-    printf("\nGUI_Startup finished.\n");
-    fflush(stdout);
 }
 
 void Mouse_AutoLock(bool enable) {
@@ -1688,12 +1670,7 @@ int main(int argc, char* argv[]) {
 		control=&myconf;
 		/* Init the configuration system and add default values */
 		Config_Add_SDL();
-
-        printf("\nDOSBox_Init starting.\n");
-        fflush(stdout);
 		DOSBOX_Init();
-        printf("\nDOSBox_Init finished.\n");
-        fflush(stdout);
 
 		std::string editor;
 		if(control->cmdline->FindString("-editconf",editor,false)) launcheditor();
@@ -1751,9 +1728,9 @@ int main(int argc, char* argv[]) {
 #endif
 
 	/* Display Welcometext in the console */
-	LOG_MSG("DOSBox version %s",VERSION);
-	LOG_MSG("Copyright 2002-2009 DOSBox Team, published under GNU GPL.");
-	LOG_MSG("---");
+	printf("DOSBox version %s",VERSION);
+	printf("Copyright 2002-2009 DOSBox Team, published under GNU GPL.");
+	printf("---");
 
 	/* Init SDL */
 	putenv(const_cast<char*>("SDL_DISABLE_LOCK_KEYS=1")); //Workaround debian/ubuntu fixes for SDL.
@@ -1845,12 +1822,9 @@ int main(int argc, char* argv[]) {
 //		UI_Init();
 //		if (control->cmdline->FindExist("-startui")) UI_Run(false);
 //
-        printf("\nIniting all the sections *\n");
-        fflush(stdout);
+
 		/* Init all the sections */
 		control->Init();
-        printf("\nIniting all the sections succeeded*\n");
-        fflush(stdout);
 		/* Some extra SDL Functions */
 		Section_prop * sdl_sec=static_cast<Section_prop *>(control->GetSection("sdl"));
 
@@ -1864,7 +1838,9 @@ int main(int argc, char* argv[]) {
 		MAPPER_Init();
 		if (control->cmdline->FindExist("-startmapper")) MAPPER_Run(false);
 		/* Start up main machine */
+printf("Parse configuration files : control->StartUp() start\n");
 		control->StartUp();
+printf("Parse configuration files : control->StartUp() end\n");
 		/* Shutdown everything */
 	} catch (char * error) {
 		// GFX_ShowMsg("Exit to error: %s",error);
@@ -1891,6 +1867,8 @@ int main(int argc, char* argv[]) {
         // FIXME
 		//throw;//dunno what happened. rethrow for sdl to catch
 	}
+
+printf("Parse configuration files end\n");
 	//Force visible mouse to end user. Somehow this sometimes doesn't happen
 	SDL_WM_GrabInput(SDL_GRAB_OFF);
 	SDL_ShowCursor(SDL_ENABLE);

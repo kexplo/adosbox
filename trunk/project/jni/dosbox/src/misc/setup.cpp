@@ -709,10 +709,7 @@ Section_line* Config::AddSection_line(char const * const _name,void (*_initfunct
 
 void Config::Init() {
 	for (const_it tel=sectionlist.begin(); tel!=sectionlist.end(); tel++){
-        printf("\nsection name: %s\n", (*tel)->GetName());
-        fflush(stdout);
 		(*tel)->ExecuteInit();
-        printf("\nsection name: %s. done\n", (*tel)->GetName());
 	}
 }
 
@@ -728,9 +725,7 @@ void Section::AddDestroyFunction(SectionFunction func,bool canchange) {
 void Section::ExecuteInit(bool initall) {
 	typedef std::list<Function_wrapper>::iterator func_it;
 	for (func_it tel=initfunctions.begin(); tel!=initfunctions.end(); tel++) {
-        printf("\nenter function\n");
 		if(initall || (*tel).canchange) (*tel).function(this);
-        printf("\nexit function\n");
 	}
 }
 
