@@ -406,7 +406,6 @@ static int SDLCALL MainThreadWrapper(void * dummy)
 	int argc = 1;
 	char * argv[] = { "sdl" };
 	chdir(SDL_CURDIR_PATH);
-    printf("main");
 	return main( argc, argv );
 	//return 1;
 };

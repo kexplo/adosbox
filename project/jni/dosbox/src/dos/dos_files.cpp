@@ -57,8 +57,6 @@ void DOS_SetDefaultDrive(Bit8u drive) {
 }
 
 bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
-    printf("\nfilename:%s, %s\n", name, fullname);
-
 	if(!name || *name == 0 || *name == ' ') {
 		/* Both \0 and space are seperators and
 		 * empty filenames report file not found */
@@ -69,20 +67,18 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 	char tempdir[DOS_PATHLENGTH];
 	char upname[DOS_PATHLENGTH];
 	Bitu r,w;
-    printf("\nfilename:%s\n", name);
 	*drive = DOS_GetDefaultDrive();
-    printf("\nfilename:%s\n", name);
 	/* First get the drive */
 	if (name_int[1]==':') {
 		*drive=(name_int[0] | 0x20)-'a';
 		name_int+=2;
 	}
-    printf("\n\n");
+
 	if (*drive>=DOS_DRIVES || !Drives[*drive]) {
 		DOS_SetError(DOSERR_PATH_NOT_FOUND);
 		return false;
 	}
-    printf("\n\n");
+
 	r=0;w=0;
 	while (name_int[r]!=0 && (r<DOS_PATHLENGTH)) {
 		Bit8u c=name_int[r++];
@@ -108,7 +104,7 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 			break;
 		}
 	}
-    printf("\n\n");
+
 	if (r>=DOS_PATHLENGTH) { DOS_SetError(DOSERR_PATH_NOT_FOUND);return false; }
 	upname[w]=0;
 	/* Now parse the new file name to make the final filename */
@@ -119,15 +115,13 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 		if ((fullname[t]=='\\') && (fullname[t+1]!=0)) lastdir=t;
 		t++;
 	};
-    printf("\n\n");
+
 	r=0;w=0;
 	tempdir[0]=0;
 	bool stop=false;
 	while (!stop) {
-        printf("\n\n");
 		if (upname[r]==0) stop=true;
 		if ((upname[r]=='\\') || (upname[r]==0)){
-        printf("\n\n");
 			tempdir[w]=0;
 			if (tempdir[0]==0) { w=0;r++;continue;}
 			if (strcmp(tempdir,".")==0) {
@@ -136,7 +130,6 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 				continue;
 			}
 
-        printf("\n\n");
 			Bit32s iDown;
 			bool dots = true;
 			Bit32s templen=(Bit32s)strlen(tempdir);
@@ -144,7 +137,6 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 				if(tempdir[iDown] != '.')
 					dots = false;
 
-        printf("\n\n");
 			// only dots?
 			if (dots && (templen > 1)) {
 				Bit32s cDots = templen - 1;
@@ -167,7 +159,6 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 				continue;
 			}
 
-        printf("\n\n");
 
 			lastdir=(Bit32u)strlen(fullname);
 
@@ -188,16 +179,16 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 				ext[4] = 0;
 				if((strlen(tempdir) - strlen(ext)) > 8) memmove(tempdir + 8, ext, 5);
 			} else tempdir[8]=0;
-        printf("\n\n");
+
 			strcat(fullname,tempdir);
 			tempdir[0]=0;
 			w=0;r++;
 			continue;
 		}
-        printf("\n\n");
+
 		tempdir[w++]=upname[r++];
 	}
-    printf("\n\n");
+
 	return true;
 }
 
