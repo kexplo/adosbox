@@ -447,9 +447,63 @@ Bitu GetKeyCode(SDL_keysym keysym) {
 		/* special handling of 102-key under windows */
 		if ((keysym.sym==SDLK_BACKSLASH) && (keysym.scancode==0x56)) return (Bitu)SDLK_LESS;
 #endif
+
 		return (Bitu)keysym.sym;
 	}
 }
+
+// =================================================================
+
+static bool androidRAltD = false;
+
+struct androidRAltMap {
+    SDLKey  from;
+    SDLKey  to;
+} androidRAltMaps[] = {
+    {SDLK_l, SDLK_COLON},
+    {SDLK_k, SDLK_SEMICOLON},
+};
+
+SDLKey mapRAlt(SDLKey key) {
+    for(int i = 0 ; i < sizeof(androidRAltMaps)/sizeof(struct androidRAltMap); ++i) {
+        if (androidRAltMaps[i].from == key) {
+            return androidRAltMaps[i].to;
+        }
+    }
+}
+
+Bitu mapAndroidKeys(SDL_keysym &keysym, Bitu key, SDL_EventType etype) {
+    printf("\nmap in\n");
+    if (usescancodes) return key;
+
+    printf("\nkey %d\n", (unsigned int)key);
+    printf("\nscancode %d\n", (unsigned int)keysym.scancode);
+    SDLKey sdlkey = (SDLKey)key;
+    if (sdlkey == SDLK_UNKNOWN) {
+        if (etype == SDL_KEYDOWN) {
+            printf("\ndetected unknow key sym: scancode:%d\n", (unsigned int)keysym.scancode);
+            switch (keysym.scancode) {
+                case 57: //R Alt
+                    androidRAltD = !androidRAltD;
+                    break;
+                case 59:
+                    break;
+                case 58:
+                    break;
+            }
+        }
+        return key;
+    }
+
+    printf("\nRAlt is down:%s\n", androidRAltD?"yes":"no");
+    if (androidRAltD) {
+        return (Bitu)mapRAlt(sdlkey);
+    } else {
+        return key;
+    }
+}
+
+// =================================================================
 
 
 class CKeyBind;
@@ -497,6 +551,10 @@ public:
 	bool CheckEvent(SDL_Event * event) {
 		if (event->type!=SDL_KEYDOWN && event->type!=SDL_KEYUP) return false;
 		Bitu key=GetKeyCode(event->key.keysym);
+
+        // FIXME: Gerald
+        key = mapAndroidKeys(event->key.keysym, key, (SDL_EventType)event->type);
+
 //		LOG_MSG("key type %i is %x [%x %x]",event->type,key,event->key.keysym.sym,event->key.keysym.scancode);
         printf("\nuse scan code: %s; key code: %d\n", usescancodes?"true":"false", key);
 		assert(Bitu(event->key.keysym.sym)<keys);
@@ -1752,11 +1810,12 @@ static KeyBlock combo_2[12]={
 	{"]","rbracket",KBD_rightbracket},
 };
 
-static KeyBlock combo_3[12]={
+static KeyBlock combo_3[12 + 1]={ //FIXME: Gerald
 	{"a","a",KBD_a},			{"s","s",KBD_s},	{"d","d",KBD_d},
 	{"f","f",KBD_f},			{"g","g",KBD_g},	{"h","h",KBD_h},
 	{"j","j",KBD_j},			{"k","k",KBD_k},	{"l","l",KBD_l},
 	{";","semicolon",KBD_semicolon},				{"'","quote",KBD_quote},
+    {":","colon",KBD_colon}, //FIXME: Gerald
 	{"\\","backslash",KBD_backslash},
 };
 
@@ -1997,6 +2056,9 @@ static struct {
 	{"tab",SDLK_TAB},		{"enter",SDLK_RETURN},		{"bspace",SDLK_BACKSPACE},
 	{"lbracket",SDLK_LEFTBRACKET},						{"rbracket",SDLK_RIGHTBRACKET},
 	{"minus",SDLK_MINUS},	{"capslock",SDLK_CAPSLOCK},	{"semicolon",SDLK_SEMICOLON},
+
+    {"colon",SDLK_COLON}, //FIXME: Gerald
+
 	{"quote", SDLK_QUOTE},	{"backslash",SDLK_BACKSLASH},	{"lshift",SDLK_LSHIFT},
 	{"rshift",SDLK_RSHIFT},	{"lalt",SDLK_LALT},			{"ralt",SDLK_RALT},
 	{"lctrl",SDLK_LCTRL},	{"rctrl",SDLK_RCTRL},		{"comma",SDLK_COMMA},

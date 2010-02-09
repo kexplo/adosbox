@@ -1190,20 +1190,25 @@ static void GUI_StartUp(Section * sec) {
 
 			Bit8u* tmpbuf = tmpbufp + y*640*3;
 			Bit32u * draw=(Bit32u*)(((Bit8u *)splash_surf->pixels)+((y)*splash_surf->pitch));
-			for (Bitu x=0; x<640; x++) {
+            // FIXME: Gerald
+			// for (Bitu x=0; x<640; x++) {
+			for (Bitu x=160; x<640; x++) {
 //#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 //				*draw++ = tmpbuf[x*3+2]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+0]*0x10000+0x00000000;
 //#else
 				*draw++ = tmpbuf[x*3+0]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+2]*0x10000+0x00000000;
 //#endif
 			}
+            // FIXME: Gerald
+            draw += 160;
 		}
 
 		bool exit_splash = false;
 
 		static Bitu max_splash_loop = 600;
 		static Bitu splash_fade = 100;
-		static bool use_fadeout = true;
+        // FIXME: Gerald
+		static bool use_fadeout = false;
 
 		for (Bit32u ct = 0,startticks = GetTicks();ct < max_splash_loop;ct = GetTicks()-startticks) {
 			SDL_Event evt;
