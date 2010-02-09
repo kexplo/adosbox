@@ -1319,6 +1319,17 @@ void GFX_LosingFocus(void) {
 	MAPPER_LosingFocus();
 }
 
+void dumpKey(SDL_KeyboardEvent &kbevent) {
+    SDL_keysym keysym = kbevent.keysym;
+    printf("\nkey pressed/depressed:\n");
+    printf("\tscancode: %d\n", (unsigned int)keysym.scancode);
+    printf("\tsym code: %d\n", (unsigned int)keysym.sym);
+    printf("\tkey modifiers: %x\n", (unsigned int)keysym.mod);
+    printf("\tunicode: %d\n", (unsigned int)keysym.unicode);
+}
+
+void MAPPER_CheckEvent(SDL_Event * event);
+
 void GFX_Events() {
 	SDL_Event event;
 #if defined (REDUCE_JOYSTICK_POLLING)
@@ -1436,12 +1447,24 @@ void GFX_Events() {
 			if (((event.key.keysym.sym==SDLK_TAB)) &&
 				((sdl.laltstate==SDL_KEYDOWN) || (sdl.raltstate==SDL_KEYDOWN))) break;
 #endif
+        // FIXME: Gerald
+        case SDL_KEYDOWN:
+            dumpKey(event.key);
+            // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
+			MAPPER_CheckEvent(&event);
+            break;
+		case SDL_KEYUP:
+            dumpKey(event.key);
+            // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
+			MAPPER_CheckEvent(&event);
+            break;
+
 		default:
-			void MAPPER_CheckEvent(SDL_Event * event);
 			MAPPER_CheckEvent(&event);
 		}
 	}
 }
+
 
 #if defined (WIN32)
 static BOOL WINAPI ConsoleEventHandler(DWORD event) {
@@ -1532,7 +1555,9 @@ void Config_Add_SDL() {
 	Pstring = sdl_sec->Add_path("mapperfile",Property::Changeable::Always,"mapper.txt");
 	Pstring->Set_help("File used to load/save the key/event mappings from.");
 
-	Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,true);
+	// Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,true);
+    // FIXME: Gerald
+	Pbool = sdl_sec->Add_bool("usescancodes",Property::Changeable::Always,false);
 	Pbool->Set_help("Avoid usage of symkeys, might not work on all operating systems.");
 }
 
