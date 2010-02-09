@@ -1322,10 +1322,9 @@ void GFX_LosingFocus(void) {
 void dumpKey(SDL_KeyboardEvent &kbevent) {
     SDL_keysym keysym = kbevent.keysym;
     printf("\nkey pressed/depressed:\n");
-    printf("\tscancode: %d\n", (unsigned int)keysym.scancode);
-    printf("\tsym code: %d\n", (unsigned int)keysym.sym);
-    printf("\tkey modifiers: %x\n", (unsigned int)keysym.mod);
-    printf("\tunicode: %d\n", (unsigned int)keysym.unicode);
+    printf("\tscancode: %d\n""\tsym code: %d\n""\tkey modifiers: %x\n""\tunicode: %d\n",
+            (unsigned int)keysym.scancode, (unsigned int)keysym.sym ,
+            (unsigned int)keysym.mod, (unsigned int)keysym.unicode);
 }
 
 void MAPPER_CheckEvent(SDL_Event * event);
