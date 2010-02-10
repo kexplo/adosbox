@@ -553,7 +553,7 @@ public:
 		Bitu key=GetKeyCode(event->key.keysym);
 
         // FIXME: Gerald
-        key = mapAndroidKeys(event->key.keysym, key, (SDL_EventType)event->type);
+        // key = mapAndroidKeys(event->key.keysym, key, (SDL_EventType)event->type);
 
 //		LOG_MSG("key type %i is %x [%x %x]",event->type,key,event->key.keysym.sym,event->key.keysym.scancode);
         printf("\nuse scan code: %s; key code: %d\n", usescancodes?"true":"false", key);
