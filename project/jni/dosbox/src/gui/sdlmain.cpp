@@ -302,7 +302,7 @@ check_surface:
 #if (HAVE_DDRAW_H) && defined(WIN32)
 check_gotbpp:
 #endif
-		if (sdl.desktop.fullscreen) gotbpp=SDL_VideoModeOK(640,480,testbpp,SDL_FULLSCREEN|SDL_HWSURFACE|SDL_HWPALETTE);
+		if (sdl.desktop.fullscreen) gotbpp=SDL_VideoModeOK(640,400,testbpp,SDL_FULLSCREEN|SDL_HWSURFACE|SDL_HWPALETTE);
 		else gotbpp=sdl.desktop.bpp;
 		/* If we can't get our favorite mode check for another working one */
 		switch (gotbpp) {
@@ -604,8 +604,9 @@ dosurface:
  		glGenTextures(1,&sdl.opengl.texture);
 		glBindTexture(GL_TEXTURE_2D,sdl.opengl.texture);
 		// No borders
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		//FIXME
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		if (sdl.opengl.bilinear) {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -613,8 +614,8 @@ dosurface:
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		}
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, texsize, texsize, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, 0);
+		//FIXME
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texsize, texsize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 
 		glClearColor (0.0, 0.0, 0.0, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -630,12 +631,12 @@ dosurface:
 
 		GLfloat tex_width=((GLfloat)(width)/(GLfloat)texsize);
 		GLfloat tex_height=((GLfloat)(height)/(GLfloat)texsize);
-
-		if (glIsList(sdl.opengl.displaylist)) glDeleteLists(sdl.opengl.displaylist, 1);
-		sdl.opengl.displaylist = glGenLists(1);
-		glNewList(sdl.opengl.displaylist, GL_COMPILE);
+		//FIXME
+		/*if (glIsList(sdl.opengl.displaylist)) glDeleteLists(sdl.opengl.displaylist, 1);
+		sdl.opengl.displaylist = glGenLists(1); 
+		glNewList(sdl.opengl.displaylist, GL_COMPILE);*/
 		glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
-		glBegin(GL_QUADS);
+		/*glBegin(GL_QUADS); 
 		// lower left
 		glTexCoord2f(0,tex_height); glVertex2f(-1.0f,-1.0f);
 		// lower right
@@ -645,7 +646,7 @@ dosurface:
 		// upper left
 		glTexCoord2f(0,0); glVertex2f(-1.0f, 1.0f);
 		glEnd();
-		glEndList();
+		glEndList();*/ //FIXME
 		sdl.desktop.type=SCREEN_OPENGL;
 		retFlags = GFX_CAN_32 | GFX_SCALING;
 #if defined(NVIDIA_PixelDataRange)
@@ -840,13 +841,14 @@ void GFX_EndUpdate( const Bit16u *changedLines ) {
 					Bit8u *pixels = (Bit8u *)sdl.opengl.framebuf + y * sdl.opengl.pitch;
 					Bitu height = changedLines[index];
 					glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y,
-						sdl.draw.width, height, GL_BGRA_EXT,
-						GL_UNSIGNED_INT_8_8_8_8_REV, pixels );
+						sdl.draw.width, height, GL_RGBA,
+						GL_UNSIGNED_SHORT_5_5_5_1, pixels ); //FIXME
 					y += height;
 				}
 				index++;
 			}
-			glCallList(sdl.opengl.displaylist);
+			//FIXME
+			//glCallList(sdl.opengl.displaylist);
 			SDL_GL_SwapBuffers();
 		}
 		break;
@@ -1159,7 +1161,7 @@ static void GUI_StartUp(Section * sec) {
 	/* Initialize screen for first time */
     // FIXME: Gerald
 	//sdl.surface=SDL_SetVideoMode(640,400,0,0);
-	sdl.surface=SDL_SetVideoMode(320,430,0,0);
+	sdl.surface=SDL_SetVideoMode(480,320,0,0);
 	if (sdl.surface == NULL) E_Exit("Could not initialize video: %s",SDL_GetError());
 	sdl.desktop.bpp=sdl.surface->format->BitsPerPixel;
 	if (sdl.desktop.bpp==24) {
@@ -1179,6 +1181,7 @@ static void GUI_StartUp(Section * sec) {
     Bit32u bmask = 0x00ff0000;
 //#endif
 
+#if 0
 /* Please leave the Splash screen stuff in working order in DOSBox. We spend a lot of time making DOSBox. */
    SDL_Surface* splash_surf = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 400, 32, rmask, gmask, bmask, 0);
 	if (splash_surf) {
@@ -1191,8 +1194,8 @@ static void GUI_StartUp(Section * sec) {
 			Bit8u* tmpbuf = tmpbufp + y*640*3;
 			Bit32u * draw=(Bit32u*)(((Bit8u *)splash_surf->pixels)+((y)*splash_surf->pitch));
             // FIXME: Gerald
-			// for (Bitu x=0; x<640; x++) {
-			for (Bitu x=160; x<640; x++) {
+		        for (Bitu x=0; x<640; x++) {
+			  //for (Bitu x=160; x<640; x++) {
 //#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 //				*draw++ = tmpbuf[x*3+2]+tmpbuf[x*3+1]*0x100+tmpbuf[x*3+0]*0x10000+0x00000000;
 //#else
@@ -1200,7 +1203,7 @@ static void GUI_StartUp(Section * sec) {
 //#endif
 			}
             // FIXME: Gerald
-            draw += 160;
+            //draw += 160;
 		}
 
 		bool exit_splash = false;
@@ -1244,7 +1247,7 @@ static void GUI_StartUp(Section * sec) {
 		delete [] tmpbufp;
 
 	}
-
+#endif
 	/* Get some Event handlers */
 	MAPPER_AddHandler(KillSwitch,MK_f9,MMOD1,"shutdown","ShutDown");
 	MAPPER_AddHandler(CaptureMouse,MK_f10,MMOD1,"capmouse","Cap Mouse");
@@ -1851,9 +1854,10 @@ int main(int argc, char* argv[]) {
 //		UI_Init();
 //		if (control->cmdline->FindExist("-startui")) UI_Run(false);
 //
-
+printf("control->Init() start\n");
 		/* Init all the sections */
 		control->Init();
+printf("control->Init() end\n");
 		/* Some extra SDL Functions */
 		Section_prop * sdl_sec=static_cast<Section_prop *>(control->GetSection("sdl"));
 
