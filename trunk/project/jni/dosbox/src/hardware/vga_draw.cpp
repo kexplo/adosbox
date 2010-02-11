@@ -1364,8 +1364,8 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 			doublewidth ? "double":"normal",doubleheight ? "double":"normal",aspect_ratio);
 #endif
 		//RENDER_SetSize(width,height,bpp,fps,aspect_ratio,doublewidth,doubleheight);
-//FIXME
-		RENDER_SetSize(320,430,bpp,fps,aspect_ratio,doublewidth,doubleheight);
+		//FIXME
+		RENDER_SetSize(480,320,bpp,fps,aspect_ratio,doublewidth,doubleheight);
 		vga.draw.delay.framestart = PIC_FullIndex();
 		PIC_AddEvent( VGA_VerticalTimer , (float)vga.draw.delay.vtotal );
 		vga.draw.lines_done = 0;

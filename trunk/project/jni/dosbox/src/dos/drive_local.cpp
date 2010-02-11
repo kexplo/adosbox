@@ -116,7 +116,7 @@ bool localDrive::FileOpen(DOS_File * * file,char * name,Bit32u flags) {
 }
 
 FILE * localDrive::GetSystemFilePtr(char const * const name, char const * const type) {
-    	freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
+  freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
 	char newname[CROSS_LEN];
        	strcpy(newname,basedir);
 	strcat(newname,name);

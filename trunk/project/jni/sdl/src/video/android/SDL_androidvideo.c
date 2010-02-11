@@ -401,10 +401,10 @@ int ANDROID_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors)
 extern int main( int argc, char ** argv );
 static int SDLCALL MainThreadWrapper(void * dummy)
 {
-    freopen("/data/data/de.schwardtnet.alienblaster/files/debug.out", "w+", stdout);
-    freopen("/data/data/de.schwardtnet.alienblaster/files/debug.err", "w+", stderr);
-	int argc = 1;
-	char * argv[] = { "sdl" };
+  freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
+  freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
+	int argc = 3;
+	char * argv[] = { "dosbox", "-conf", " /sdcard/dosbox.conf" };
 	chdir(SDL_CURDIR_PATH);
 	return main( argc, argv );
 	//return 1;
@@ -547,13 +547,29 @@ static int processAndroidTrackballKeyDelays( int key, int action )
 	#endif
 }
 
+static int altpressed = 0;
 void
 JAVA_EXPORT_NAME(DemoGLSurfaceView_nativeKey) ( JNIEnv*  env, jobject  thiz, jint key, jint action )
 {
 	//__android_log_print(ANDROID_LOG_INFO, "libSDL", "key event %i %s", key, action ? "down" : "up");
 	SDL_keysym keysym;
-	if( ! processAndroidTrackballKeyDelays(key, action) )
-		SDL_PrivateKeyboard( action ? SDL_PRESSED : SDL_RELEASED, TranslateKey(key, &keysym) );
+	if( ! processAndroidTrackballKeyDelays(key, action) ) {
+	  if (key == KEYCODE_ALT_LEFT || key == KEYCODE_ALT_RIGHT)
+	    altpressed = action;
+
+	  if (altpressed) {
+	    if (key == KEYCODE_PERIOD)
+	      key = KEYCODE_SLASH;
+	    else if (key == KEYCODE_H) {
+	      keysym.scancode = key;
+	      keysym.sym = SDLK_COLON;
+	      keysym.mod = KMOD_NONE;
+	      SDL_PrivateKeyboard( action ? SDL_PRESSED : SDL_RELEASED, &keysym);
+	      return;
+	    }
+	  }
+	  SDL_PrivateKeyboard( action ? SDL_PRESSED : SDL_RELEASED, TranslateKey(key, &keysym) );
+	}
 }
 
 /* Call to render the next GL frame */
