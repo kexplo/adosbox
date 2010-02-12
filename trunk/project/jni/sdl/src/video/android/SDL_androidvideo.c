@@ -85,7 +85,8 @@ struct SDL_PrivateVideoData {
 	SDL_Rect *SDL_modelist[SDL_NUMMODES+1];
 };
 
-#define SDL_modelist		(this->hidden->SDL_modelist)
+// #define SDL_modelist		(this->hidden->SDL_modelist)
+#define SDL_modelist		(THIS->hidden->SDL_modelist)
 
 
 static int sWindowWidth  = 320;
@@ -263,7 +264,7 @@ SDL_Surface *ANDROID_SetVideoMode(_THIS, SDL_Surface *current,
 	current->pixels = memBuffer;
 
 	/* Wait 'till we can draw */
-	ANDROID_FlipHWSurface(this, current);
+	ANDROID_FlipHWSurface(THIS, current);
 	/* We're done */
 	return(current);
 }
@@ -292,10 +293,10 @@ void ANDROID_VideoQuit(_THIS)
 
 	int i;
 
-	if (this->screen->pixels != NULL)
+	if (THIS->screen->pixels != NULL)
 	{
-		SDL_free(this->screen->pixels);
-		this->screen->pixels = NULL;
+		SDL_free(THIS->screen->pixels);
+		THIS->screen->pixels = NULL;
 	}
 	/* Free video mode lists */
 	for ( i=0; i<SDL_NUMMODES; ++i ) {
@@ -334,7 +335,7 @@ static void ANDROID_UnlockHWSurface(_THIS, SDL_Surface *surface)
 
 static void ANDROID_UpdateRects(_THIS, int numrects, SDL_Rect *rects)
 {
-	ANDROID_FlipHWSurface(this, SDL_VideoSurface);
+	ANDROID_FlipHWSurface(THIS, SDL_VideoSurface);
 }
 
 static int ANDROID_FlipHWSurface(_THIS, SDL_Surface *surface)
@@ -401,8 +402,8 @@ int ANDROID_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors)
 extern int main( int argc, char ** argv );
 static int SDLCALL MainThreadWrapper(void * dummy)
 {
-  freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
-  freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
+    freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
+    freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
 	int argc = 3;
 	char * argv[] = { "dosbox", "-conf", " /sdcard/dosbox.conf" };
 	chdir(SDL_CURDIR_PATH);
@@ -457,7 +458,9 @@ JAVA_EXPORT_NAME(DemoGLSurfaceView_nativeMouse) ( JNIEnv*  env, jobject  thiz, j
 		SDL_PrivateMouseMotion(0, 0, x, y);
 }
 
-static SDL_keysym *TranslateKey(int scancode, SDL_keysym *keysym)
+// FIXME
+// static SDL_keysym *TranslateKey(int scancode, SDL_keysym *keysym)
+SDL_keysym *TranslateKey(int scancode, SDL_keysym *keysym)
 {
 	/* Sanity check */
 	if ( scancode >= SDL_arraysize(keymap) )
@@ -856,9 +859,12 @@ void ANDROID_InitOSKeymap(_THIS)
 
   keymap[KEYCODE_ALT_LEFT] = SDLK_ALT_LEFT;
   keymap[KEYCODE_ALT_RIGHT] = SDLK_ALT_RIGHT;
-  keymap[KEYCODE_SHIFT_LEFT] = SDLK_SHIFT_LEFT;
-  keymap[KEYCODE_SHIFT_RIGHT] = SDLK_SHIFT_RIGHT;
+  */
+  // FIXME
+  keymap[KEYCODE_SHIFT_LEFT] = SDLK_LSHIFT;
+  keymap[KEYCODE_SHIFT_RIGHT] = SDLK_RSHIFT;
 
+  /*
   keymap[KEYCODE_EXPLORER] = SDLK_EXPLORER;
   keymap[KEYCODE_ENVELOPE] = SDLK_ENVELOPE;
   keymap[KEYCODE_HEADSETHOOK] = SDLK_HEADSETHOOK;
