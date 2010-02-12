@@ -32,6 +32,8 @@ CG_SRCDIR=LOCAL_PATH
 LOCAL_CFLAGS := $(foreach D, $(CG_SUBDIRS), -I$(CG_SRCDIR)/$(D)) \
 				-I$(LOCAL_PATH)/../sdl/include \
 				-I$(LOCAL_PATH)/../sdl_mixer \
+				-I$(LOCAL_PATH)/../sdl/src/video/android \
+				-I$(LOCAL_PATH)/../sdl/src/events \
 				-I$(LOCAL_PATH)/../stlport/stlport \
 				-I$(LOCAL_PATH)/include \
 				-I$(LOCAL_PATH) \

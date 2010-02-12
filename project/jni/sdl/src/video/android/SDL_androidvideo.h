@@ -26,15 +26,24 @@
 
 #include "../SDL_sysvideo.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Hidden "this" pointer for the video functions */
-#define _THIS	SDL_VideoDevice *this
+// FIXME
+// #define _THIS	SDL_VideoDevice *this
+#define _THIS	SDL_VideoDevice *THIS
 
 extern void ANDROID_InitOSKeymap(_THIS);
 extern void ANDROID_PumpEvents(_THIS);
 
 
+// FIXME
+SDL_keysym *TranslateKey(int scancode, SDL_keysym *keysym);
+
 // Keycodes ripped from Java SDK
-enum KEYCODES_ANDROID 
+enum KEYCODES_ANDROID
 {
 KEYCODE_UNKNOWN         = 0,
 KEYCODE_SOFT_LEFT       = 1,
@@ -131,5 +140,9 @@ KEYCODE_MUTE            = 91,
 
 KEYCODE_LAST            = KEYCODE_MUTE
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SDL_androidvideo_h */

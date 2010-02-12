@@ -53,6 +53,20 @@
 
 //#define DISABLE_JOYSTICK
 
+#include "keymapper.cxx"
+
+#include <SDL_events_c.h>
+#include <SDL_androidvideo.h>
+
+/*
+extern "C" {
+    SDL_keysym *TranslateKey(int scancode, SDL_keysym *keysym);
+}
+extern "C" {
+    // int SDL_PrivateKeyboard(Uint8 state, SDL_keysym *keysym);
+}
+*/
+
 #if C_OPENGL
 #include "SDL_opengl.h"
 
@@ -633,10 +647,10 @@ dosurface:
 		GLfloat tex_height=((GLfloat)(height)/(GLfloat)texsize);
 		//FIXME
 		/*if (glIsList(sdl.opengl.displaylist)) glDeleteLists(sdl.opengl.displaylist, 1);
-		sdl.opengl.displaylist = glGenLists(1); 
+		sdl.opengl.displaylist = glGenLists(1);
 		glNewList(sdl.opengl.displaylist, GL_COMPILE);*/
 		glBindTexture(GL_TEXTURE_2D, sdl.opengl.texture);
-		/*glBegin(GL_QUADS); 
+		/*glBegin(GL_QUADS);
 		// lower left
 		glTexCoord2f(0,tex_height); glVertex2f(-1.0f,-1.0f);
 		// lower right
@@ -1248,6 +1262,7 @@ static void GUI_StartUp(Section * sec) {
 
 	}
 #endif
+
 	/* Get some Event handlers */
 	MAPPER_AddHandler(KillSwitch,MK_f9,MMOD1,"shutdown","ShutDown");
 	MAPPER_AddHandler(CaptureMouse,MK_f10,MMOD1,"capmouse","Cap Mouse");
@@ -1336,6 +1351,52 @@ void dumpKey(SDL_KeyboardEvent &kbevent) {
 }
 
 void MAPPER_CheckEvent(SDL_Event * event);
+
+
+// ==========================================================================
+// FIXME:
+bool androidKeyProc(unsigned int key, SDLKey sym, bool pressed) {
+    AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
+
+    AndroidKM *km = NULL;
+    // enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, sym, pressed, &km);
+    enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, key, pressed, &km);
+
+    switch (result) {
+        case Android_Key_MC:
+            return false;
+            break;
+        case Android_Key_UnMapped:
+            return true;
+            //SDL_PrivateKeyboard( pressed, TranslateKey(key, &keysym) );
+            break;
+        case Android_Key_Mapped: {
+            if (km != NULL) {
+                if (pressed == true && km->needShift) {
+                    printf("\n fake shift down !!!\n");
+                    SDL_keysym keysym;
+                    SDL_PrivateKeyboard((char)SDL_PRESSED, TranslateKey(KEYCODE_SHIFT_LEFT, &keysym) );
+                }
+
+                printf("\n key is mapped to:%d !!!\n", km->getTo());
+                SDL_keysym keysym2;
+                SDL_PrivateKeyboard((char)(pressed?SDL_PRESSED:SDL_RELEASED), TranslateKey(km->getTo(), &keysym2));
+
+                if (pressed == true && km->needShift) {
+                    printf("\n fake shift up !!!\n");
+                    SDL_keysym keysym3;
+                    SDL_PrivateKeyboard((char)SDL_RELEASED, TranslateKey(KEYCODE_SHIFT_LEFT, &keysym3) );
+                }
+            }
+            return false;
+            break;
+            }
+        default:
+            break;
+    }
+    return true;
+}
+// ========================================================================\\
 
 void GFX_Events() {
 	SDL_Event event;
@@ -1457,13 +1518,15 @@ void GFX_Events() {
         // FIXME: Gerald
         case SDL_KEYDOWN:
             dumpKey(event.key);
+            if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, true))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
-			MAPPER_CheckEvent(&event);
+                MAPPER_CheckEvent(&event);
             break;
 		case SDL_KEYUP:
             dumpKey(event.key);
+            if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, false))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
-			MAPPER_CheckEvent(&event);
+                MAPPER_CheckEvent(&event);
             break;
 
 		default:
@@ -1816,8 +1879,10 @@ int main(int argc, char* argv[]) {
 	std::string config_file,config_path;
 	bool parsed_anyconfigfile = false;
 	//First Parse -conf switches
-	while(control->cmdline->FindString("-conf",config_file,true))
+	while(control->cmdline->FindString("-conf",config_file,true)) {
+        printf("config file: %s\n",  config_file.c_str());
 		if (control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
+    }
 
 	//if none found => parse localdir conf
 	config_file = "dosbox.conf";

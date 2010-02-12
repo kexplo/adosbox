@@ -24,6 +24,11 @@
 /* Useful functions and variables from SDL_events.c */
 #include "SDL_events.h"
 
+// FIXME
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Start and stop the event processing loop */
 extern int SDL_StartEventLoop(Uint32 flags);
 extern void SDL_StopEventLoop(void);
@@ -81,3 +86,7 @@ extern void SDL_CheckKeyRepeat(void);
 #define DEFAULT_UNICODE_TRANSLATION 0	/* Default off because of overhead */
 #endif
 extern int SDL_TranslateUNICODE;
+
+#ifdef __cplusplus
+}
+#endif
