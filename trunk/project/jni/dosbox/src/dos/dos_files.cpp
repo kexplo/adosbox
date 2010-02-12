@@ -393,7 +393,7 @@ bool DOS_WriteFile(Bit16u entry,Bit8u * data,Bit16u * amount) {
 		return false;
 	}
 */
-	Bit16u towrite=*amount;
+	Bit16u towrite=*amount;;
 	bool ret=Files[handle]->Write(data,&towrite);
 	*amount=towrite;
 	return ret;

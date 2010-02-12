@@ -63,6 +63,7 @@ void DOS_Shell::InputCommand(char * line) {
 			size=0;			//Kill the while loop
 			continue;
 		}
+
 		switch (c) {
 		case 0x00:				/* Extended Keys */
 			{
