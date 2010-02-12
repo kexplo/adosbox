@@ -315,14 +315,10 @@ void DOS_Shell::Run(void) {
 				if (echo) WriteOut("\n");
 			}
 		} else {
-			printf("2\n");
 			if (echo) ShowPrompt();
 			InputCommand(input_line);
-printf("3\n");
 			ParseLine(input_line);
-printf("4\n");
 			if (echo && !bf) WriteOut_NoParsing("\n");
-printf("5\n");
 		}
 	} while (!exit);
 }

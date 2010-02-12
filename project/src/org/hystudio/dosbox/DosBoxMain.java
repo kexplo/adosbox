@@ -75,7 +75,7 @@ class DemoRenderer implements GLSurfaceView.Renderer {
 class DemoGLSurfaceView extends GLSurfaceView {
     public DemoGLSurfaceView(Activity context) {
         super(context);
-        mParent = context;
+        mParent = context; 
         mRenderer = new DemoRenderer();
         setRenderer(mRenderer);
     }
@@ -93,7 +93,7 @@ class DemoGLSurfaceView extends GLSurfaceView {
         	action = 2;
         if (  action >= 0 ) {
             nativeMouse( (int)event.getX(), (int)event.getY(), action );
-        }
+        } 
         return true;
     }
 
