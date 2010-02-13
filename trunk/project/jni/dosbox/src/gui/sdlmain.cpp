@@ -1342,10 +1342,10 @@ void GFX_LosingFocus(void) {
 	MAPPER_LosingFocus();
 }
 
-void dumpKey(SDL_KeyboardEvent &kbevent) {
+void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
     SDL_keysym keysym = kbevent.keysym;
-    printf("\nkey pressed/depressed:\n");
-    printf("\tscancode: %d\n""\tsym code: %d\n""\tkey modifiers: %x\n""\tunicode: %d\n",
+    printf("%s:\n\tscancode:%d; ""sym code:%d; ""\tkey modifiers:%x; ""\tunicode: %d\n",
+            pressed? "key pressed" : "key released",
             (unsigned int)keysym.scancode, (unsigned int)keysym.sym ,
             (unsigned int)keysym.mod, (unsigned int)keysym.unicode);
 }
@@ -1355,37 +1355,159 @@ void MAPPER_CheckEvent(SDL_Event * event);
 
 // ==========================================================================
 // FIXME:
+
+bool pushKbEvent(KEYCODES_ANDROID scancode, bool pressed) {
+	SDL_Event event;
+    SDL_memset(&event, 0, sizeof(event));
+
+    event.type = pressed?SDL_KEYDOWN:SDL_KEYUP;
+    event.key.state = pressed?SDL_PRESSED:SDL_RELEASED;
+    SDL_keysym keysym;
+    TranslateKey(scancode, &keysym);
+    event.key.keysym = keysym;
+    event.key.userData = 1; //already mapped
+
+    if ( (SDL_EventOK == NULL) || SDL_EventOK(&event) ) {
+        return 0 == SDL_PushEvent(&event);
+    }
+    return false;
+}
+
+// bool isAndroidShiftDown = false;
+int softAndoridShiftDown = 0;
+bool isAndroidSchduleShiftUp = false;
+bool isAndroidSchduleShiftDown = false;
+
+/*
 bool androidKeyProc(unsigned int key, SDLKey sym, bool pressed) {
     AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
 
+    switch (key) {
+        case KEYCODE_SHIFT_LEFT:
+        case KEYCODE_SHIFT_RIGHT:
+            if (pressed) {
+                if (isAndroidSchduleShiftDown)
+                    ++softAndoridShiftDown;
+                isAndroidSchduleShiftDown = false;
+                isAndroidShiftDown = true;
+            }
+    }
+
     AndroidKM *km = NULL;
     // enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, sym, pressed, &km);
-    enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, key, pressed, &km);
+    enum Android_KeyMap_Result result =
+        keyEvtMgr->dispatch(key, key, pressed, &km, softAndoridShiftDown==0?-1:KEYCODE_SHIFT_LEFT);
+
+    switch (key) {
+        case KEYCODE_SHIFT_LEFT:
+        case KEYCODE_SHIFT_RIGHT:
+            if (!pressed) {
+                if (softAndoridShiftDown > 0 && isAndroidSchduleShiftUp)
+                    --softAndoridShiftDown;
+                isAndroidSchduleShiftUp = false;
+                isAndroidShiftDown = false;
+                if (softAndoridShiftDown > 0) --softAndoridShiftDown;
+            }
+    }
 
     switch (result) {
         case Android_Key_MC:
             return false;
             break;
-        case Android_Key_UnMapped:
+        case Android_Key_UnMapped: {
             return true;
-            //SDL_PrivateKeyboard( pressed, TranslateKey(key, &keysym) );
             break;
+        }
+        case Android_Key_Mapped: {
+            printf("\n");
+            if (km != NULL) {
+                bool cont = true;
+                if (pressed == true && km->needShift && !softAndoridShiftDown) {
+
+                    printf("fake shift down !!!\n");
+                    pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
+                    isAndroidSchduleShiftDown = true;
+
+                    if (km->getTo() == key) {
+                        cont = false;
+                        pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
+                    }
+                }
+                printf("\n");
+
+                if (km->getTo() != key) {
+                    printf("\n key is mapped to:%d !!!\n", km->getTo());
+                    pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
+                    cont = false;
+                }
+                printf("\n");
+
+                if (!isAndroidSchduleShiftUp) {
+                    if (pressed == false && km->needShift && softAndoridShiftDown) {
+                        if (km->getTo() == key) {
+                            pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
+                            cont = false;
+                        }
+                        printf("\n fake shift up !!!\n");
+                        pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
+                        isAndroidSchduleShiftUp = !isAndroidSchduleShiftUp;
+                    }
+                }
+                return cont;
+            }
+            return false;
+            break;
+            }
+        default:
+            break;
+    }
+    return true;
+}
+*/
+
+bool androidKeyProc(SDL_Event event, bool pressed) {
+    unsigned int key = event.key.keysym.scancode;
+    SDLKey sym = event.key.keysym.sym;
+    AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
+
+    if (event.key.userData == 1) { //mapped already
+        switch (key) {
+            case KEYCODE_SHIFT_LEFT:
+            case KEYCODE_SHIFT_RIGHT:
+                if (pressed) {
+                    ++softAndoridShiftDown;
+                } else {
+                    if (softAndoridShiftDown > 0) --softAndoridShiftDown;
+                }
+        }
+        return true;
+    }
+
+    AndroidKM *km = NULL;
+    enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, key, pressed, &km, -1);
+
+    switch (result) {
+        case Android_Key_MC:
+            return false;
+            break;
+        case Android_Key_UnMapped: {
+            return true;
+            break;
+        }
         case Android_Key_Mapped: {
             if (km != NULL) {
-                if (pressed == true && km->needShift) {
-                    printf("\n fake shift down !!!\n");
-                    SDL_keysym keysym;
-                    SDL_PrivateKeyboard((char)SDL_PRESSED, TranslateKey(KEYCODE_SHIFT_LEFT, &keysym) );
+                if (pressed == true && km->needShift && !softAndoridShiftDown) {
+                    // printf("fake shift down !!!\n");
+                    pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
                 }
 
-                printf("\n key is mapped to:%d !!!\n", km->getTo());
-                SDL_keysym keysym2;
-                SDL_PrivateKeyboard((char)(pressed?SDL_PRESSED:SDL_RELEASED), TranslateKey(km->getTo(), &keysym2));
+                // printf("\n key is mapped to:%d !!!\n", km->getTo());
+                pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
 
-                if (pressed == true && km->needShift) {
-                    printf("\n fake shift up !!!\n");
-                    SDL_keysym keysym3;
-                    SDL_PrivateKeyboard((char)SDL_RELEASED, TranslateKey(KEYCODE_SHIFT_LEFT, &keysym3) );
+                if (pressed == false && km->needShift && softAndoridShiftDown) {
+                    pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
+                    // printf("\n fake shift up !!!\n");
+                    pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
                 }
             }
             return false;
@@ -1516,17 +1638,24 @@ void GFX_Events() {
 				((sdl.laltstate==SDL_KEYDOWN) || (sdl.raltstate==SDL_KEYDOWN))) break;
 #endif
         // FIXME: Gerald
-        case SDL_KEYDOWN:
-            dumpKey(event.key);
-            if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, true))
+        case SDL_KEYDOWN: {
+            dumpKey(event.key, true);
+             if (androidKeyProc(event, true)) {
+                 printf("key passed to dosx MAPPER_CheckEvent\n");
+            // if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, true))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
                 MAPPER_CheckEvent(&event);
+             }
+              }
             break;
 		case SDL_KEYUP:
-            dumpKey(event.key);
-            if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, false))
+            dumpKey(event.key, false);
+            if (androidKeyProc(event, false)) {
+                 printf("key passed to dosx MAPPER_CheckEvent\n");
+            // if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, false))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
                 MAPPER_CheckEvent(&event);
+            }
             break;
 
 		default:
@@ -1931,6 +2060,10 @@ printf("control->Init() end\n");
 				GFX_SwitchFullScreen();
 			}
 		}
+
+
+        // FIXME
+        SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY /*500*/, SDL_DEFAULT_REPEAT_INTERVAL /*30*/);
 
 		/* Init the keyMapper */
 		MAPPER_Init();

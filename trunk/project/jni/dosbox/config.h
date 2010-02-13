@@ -319,6 +319,7 @@ typedef         double     Real64;
     fflush( stdout )
 #endif
 
+#undef printf
 #define printf(fmt, args...) \
     printf("%s:%d:\n    ", __FILE__, __LINE__); \
     printf(fmt, ##args); \

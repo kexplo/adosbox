@@ -5,6 +5,9 @@
 #ifndef __KeyMapper_H
 #define __KeyMapper_H
 
+#undef printf
+#define printf(x,...)
+
 #include <time.h>
 #include <sys/time.h>
 #include <vector>
@@ -219,11 +222,19 @@ class AndroidKM {
 private:
     Android_Key from;
     Android_Key to;
+    int         status;
 public:
     bool        needShift;
-    AndroidKM(Android_Key pfrom, Android_Key pto, bool pneedShift):from(pfrom), to(pto), needShift(pneedShift) {
+    AndroidKM(Android_Key pfrom, Android_Key pto, bool pneedShift):
+        from(pfrom), to(pto), needShift(pneedShift), status(0) {
     }
 
+    int getStatus() {
+        return status;
+    }
+    void setStatus(int status) {
+        this->status = status;
+    }
     Android_Key getFrom() {
         return from;
     }
@@ -239,10 +250,11 @@ public:
 };
 
 class AndroidKMGroup {
-private:
-    vector<AndroidKM*> keymaps;
+protected:
+    vector<AndroidKM*>  keymaps;
     // Android_Scancode scancode;
-
+    bool                searchable;
+    bool                shiftMod;
 public:
     /*
     AndroidKMGroup (Android_Scancode scancode) {
@@ -254,7 +266,8 @@ public:
     }
     */
 
-    bool addKeyMapping(Android_Key from, Android_Key to, bool needShift) {
+    AndroidKMGroup(): searchable(true),shiftMod(false) { }
+    bool addKeyMapping(Android_Key from, Android_Key to, bool needShift, AndroidKM **km = NULL) {
         vector<AndroidKM*>::iterator it = keymaps.begin();
         while (it != keymaps.end()) {
             if ((*it)->getFrom() == from)//exists already
@@ -262,7 +275,12 @@ public:
             ++it;
         }
 
-        keymaps.push_back(new AndroidKM(from, to, needShift));
+        if (km) {
+            *km = new AndroidKM(from, to, needShift);
+            keymaps.push_back(*km);
+        } else {
+            keymaps.push_back(new AndroidKM(from, to, needShift));
+        }
         return true;
     }
 
@@ -281,6 +299,13 @@ public:
             }
             ++it;
         }
+        if (!searchable) {
+            if (shiftMod) { // FIXME: exclude shift key itself?
+                addKeyMapping(from, from, true, km);
+                mapped = true;
+                return from;
+            }
+        }
         mapped = false;
         *km = NULL;
         return from;
@@ -292,6 +317,7 @@ public:
     AndroidLAlt2KMGroup () {
         // FIXME
         //addKeyMapping(KEYCODE_H, KEYCODE_SEMICOLON, true);
+        addKeyMapping(KEYCODE_Q, KEYCODE_TAB, true);
         addKeyMapping(KEYCODE_H, KEYCODE_SEMICOLON, true);
         addKeyMapping(KEYCODE_J, KEYCODE_SEMICOLON, false);
         addKeyMapping(KEYCODE_K, KEYCODE_APOSTROPHE, true);
@@ -311,6 +337,7 @@ public:
         addKeyMapping(KEYCODE_N, KEYCODE_COMMA, true);
         addKeyMapping(KEYCODE_M, KEYCODE_PERIOD, true);
         addKeyMapping(KEYCODE_COMMA, KEYCODE_SLASH, true);
+        addKeyMapping(KEYCODE_PERIOD, KEYCODE_SLASH, false);
         addKeyMapping(KEYCODE_0, KEYCODE_0, true);
         addKeyMapping(KEYCODE_9, KEYCODE_9, true);
         addKeyMapping(KEYCODE_8, KEYCODE_8, true);
@@ -321,6 +348,14 @@ public:
         addKeyMapping(KEYCODE_3, KEYCODE_3, true);
         addKeyMapping(KEYCODE_2, KEYCODE_2, true);
         addKeyMapping(KEYCODE_1, KEYCODE_1, true);
+    }
+};
+
+class AndroidLShift2KMGroup: public AndroidKMGroup {
+public:
+    AndroidLShift2KMGroup () {
+        searchable = false;
+        shiftMod = true;
     }
 };
 
@@ -340,8 +375,10 @@ public:
         return mckey;
     }
 
-    bool mchandle(Android_Scancode scancode, bool pressed) {
+    bool mchandle(Android_Scancode scancode, bool pressed, int ignore) {
         printf("\nmchandle starts\n");
+        if (ignore == scancode) return false;
+
         if (mckey->interests(scancode)) {
             printf("\nmchandle interest\n");
             mckey->handle(scancode, pressed);
@@ -407,6 +444,28 @@ public:
     }
 };
 
+
+class AndroidMCKeyLShiftMap : public AndroidMCKeyMap {
+public:
+    AndroidMCKeyLShiftMap () {
+        printf("\ncreate left shift evt mgr\n");
+        mckey = new AndroidLShiftEvtMgr();
+        printf("\ncreate left shift km group\n");
+        AndroidKMGroup *kmgroup = new AndroidLShift2KMGroup();
+        keymaps.push_back(kmgroup);
+        printf("\ninit handle map\n");
+
+        // initHandleMap(); default map is not appropriate
+
+        handleMap[2] = 2;
+        handleMap[1] = 1;
+        handleMap[0] = 0;
+        handleMap[-1] = 2;
+        handleMap[-2] = 0;
+        handleMap[-3] = 0;
+    }
+};
+
 /*
 class AndroidKMMgr {
 private:
@@ -458,6 +517,8 @@ protected:
         AndroidMCKeyLAltMap *lAltMCKey = new AndroidMCKeyLAltMap();
         mckeys.push_back(lAltMCKey);
         printf("\n add Left Alt key handler over\n");
+        AndroidMCKeyLShiftMap *lShiftMCKey = new AndroidMCKeyLShiftMap();
+        mckeys.push_back(lShiftMCKey);
     }
 
     static AndroidKeyEvtMgr     *androidEvtMgr;
@@ -478,12 +539,12 @@ public:
     }
 
     enum Android_KeyMap_Result dispatch (Android_Key scancode,
-            Android_Key keysym, bool pressed, AndroidKM **km) {
+            Android_Key keysym, bool pressed, AndroidKM **km, int ignore) {
         printf("\n dispatch starts: scancode: %d, keysym: %d, pressed:%s\n", scancode, keysym, pressed?"yes":"no");
         vector<AndroidMCKeyMap*>::iterator it = mckeys.begin();
         while (it != mckeys.end()) {
             printf("interesting mc key: %s\n", (*it)->getMckey()->getKeyname().c_str());
-            if ((*it)->mchandle(scancode, pressed)) {
+            if ((*it)->mchandle(scancode, pressed, ignore)) {
                 printf("\n MC key\n");
                 return Android_Key_MC;
             }
@@ -498,8 +559,39 @@ public:
             printf("2 interesting mc key: %s\n", (*it)->getMckey()->getKeyname().c_str());
             Android_KeyMap_Result to = (*it)->mapKey(keysym, km);
             if (to == Android_Key_Mapped) {
-                printf("\n key mapped\n");
                 return Android_Key_Mapped;
+                /*
+                if ((*km)->needShift) {
+                    switch ((*km)->getStatus()) {
+                        case 0: //triggered by keydown
+                            if (pressed) {
+                                printf("keymap status: %d->%d\n", 0, 1);
+                                (*km)->setStatus(1);
+                                printf("\n key mapped\n");
+                                return Android_Key_Mapped;
+                            }
+                            break;
+                        case 1: //triggered by keydown
+                            if (pressed) {
+                                printf("keymap status: %d->%d\n", 1, 2);
+                                (*km)->setStatus(2);
+                                return Android_Key_UnMapped;
+                            }
+                            break;
+                        case 2: //triggered by keyup
+                            if (!pressed) {
+                                printf("keymap status: %d->%d\n", 2, 0);
+                                (*km)->setStatus(0);
+                                return Android_Key_UnMapped;
+                            }
+                            break;
+                        default:
+                            return Android_Key_UnMapped;
+                    }
+                    return Android_Key_UnMapped;
+                }
+                return Android_Key_Mapped;
+                */
             }
             ++it;
         }
@@ -516,5 +608,7 @@ int AndroidMCKey::clickBtwnThreshold = 1000 * 1000; //1 second
 int main() {
 }
 */
+
+#include <config.h>
 
 #endif

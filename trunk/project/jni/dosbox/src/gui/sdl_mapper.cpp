@@ -556,7 +556,7 @@ public:
         // key = mapAndroidKeys(event->key.keysym, key, (SDL_EventType)event->type);
 
 //		LOG_MSG("key type %i is %x [%x %x]",event->type,key,event->key.keysym.sym,event->key.keysym.scancode);
-        printf("\nuse scan code: %s; key code: %d\n", usescancodes?"true":"false", key);
+        // printf("\nuse scan code: %s; key code: %d\n", usescancodes?"true":"false", key);
 		assert(Bitu(event->key.keysym.sym)<keys);
 		if (event->type==SDL_KEYDOWN) ActivateBindList(&lists[key],0x7fff,true);
 		else DeactivateBindList(&lists[key],true);
@@ -1529,7 +1529,6 @@ public:
 		key=_key;
 	}
 	void Active(bool yesno) {
-        printf("\nCKeyEvent: yesno: %s; key: %d\n", yesno?"yes":"no", (unsigned int)key);
 		KEYBOARD_AddKey(key,yesno);
 	};
 	KBD_KEYS key;
@@ -1810,12 +1809,12 @@ static KeyBlock combo_2[12]={
 	{"]","rbracket",KBD_rightbracket},
 };
 
-static KeyBlock combo_3[12 + 1]={ //FIXME: Gerald
+static KeyBlock combo_3[12]={ //FIXME: Gerald
 	{"a","a",KBD_a},			{"s","s",KBD_s},	{"d","d",KBD_d},
 	{"f","f",KBD_f},			{"g","g",KBD_g},	{"h","h",KBD_h},
 	{"j","j",KBD_j},			{"k","k",KBD_k},	{"l","l",KBD_l},
 	{";","semicolon",KBD_semicolon},				{"'","quote",KBD_quote},
-    {":","colon",KBD_colon}, //FIXME: Gerald
+    // {":","colon",KBD_colon}, //FIXME: Gerald
 	{"\\","backslash",KBD_backslash},
 };
 
@@ -2057,7 +2056,7 @@ static struct {
 	{"lbracket",SDLK_LEFTBRACKET},						{"rbracket",SDLK_RIGHTBRACKET},
 	{"minus",SDLK_MINUS},	{"capslock",SDLK_CAPSLOCK},	{"semicolon",SDLK_SEMICOLON},
 
-    {"colon",SDLK_COLON}, //FIXME: Gerald
+    // {"colon",SDLK_COLON}, //FIXME: Gerald
 
 	{"quote", SDLK_QUOTE},	{"backslash",SDLK_BACKSLASH},	{"lshift",SDLK_LSHIFT},
 	{"rshift",SDLK_RSHIFT},	{"lalt",SDLK_LALT},			{"ralt",SDLK_RALT},
