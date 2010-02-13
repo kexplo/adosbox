@@ -127,6 +127,7 @@ typedef struct SDL_KeyboardEvent {
 	Uint8 type;	/**< SDL_KEYDOWN or SDL_KEYUP */
 	Uint8 which;	/**< The keyboard device index */
 	Uint8 state;	/**< SDL_PRESSED or SDL_RELEASED */
+    Uint8 userData; // FIXME: Gerald
 	SDL_keysym keysym;
 } SDL_KeyboardEvent;
 
@@ -264,7 +265,7 @@ typedef enum {
  *  If 'action' is SDL_PEEKEVENT, up to 'numevents' events at the front
  *  of the event queue, matching 'mask', will be returned and will not
  *  be removed from the queue.
- *  If 'action' is SDL_GETEVENT, up to 'numevents' events at the front 
+ *  If 'action' is SDL_GETEVENT, up to 'numevents' events at the front
  *  of the event queue, matching 'mask', will be returned and will be
  *  removed from the queue.
  *
@@ -306,11 +307,11 @@ typedef int (SDLCALL *SDL_EventFilter)(const SDL_Event *event);
  *      @code typedef int (SDLCALL *SDL_EventFilter)(const SDL_Event *event); @endcode
  *
  * If the filter returns 1, then the event will be added to the internal queue.
- * If it returns 0, then the event will be dropped from the queue, but the 
+ * If it returns 0, then the event will be dropped from the queue, but the
  * internal state will still be updated.  This allows selective filtering of
  * dynamically arriving events.
  *
- * @warning  Be very careful of what you do in the event filter function, as 
+ * @warning  Be very careful of what you do in the event filter function, as
  *           it may run in a different thread!
  *
  * There is one caveat when dealing with the SDL_QUITEVENT event type.  The
@@ -342,7 +343,7 @@ extern DECLSPEC SDL_EventFilter SDLCALL SDL_GetEventFilter(void);
 * If 'state' is set to SDL_IGNORE, that event will be automatically dropped
 * from the event queue and will not event be filtered.
 * If 'state' is set to SDL_ENABLE, that event will be processed normally.
-* If 'state' is set to SDL_QUERY, SDL_EventState() will return the 
+* If 'state' is set to SDL_QUERY, SDL_EventState() will return the
 * current processing state of the specified event.
 */
 extern DECLSPEC Uint8 SDLCALL SDL_EventState(Uint8 type, int state);
