@@ -1110,6 +1110,7 @@ static void GUI_StartUp(Section * sec) {
 #endif
 	}
 	sdl.mouse.autoenable=section->Get_bool("autolock");
+    sdl.mouse.autoenable = false; // FIXME
 	if (!sdl.mouse.autoenable) SDL_ShowCursor(SDL_DISABLE);
 	sdl.mouse.autolock=false;
 	sdl.mouse.sensitivity=section->Get_int("sensitivity");
