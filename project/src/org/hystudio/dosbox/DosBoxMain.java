@@ -18,7 +18,7 @@ public class DosBoxMain extends Activity {
 	public static final String ApplicationName = "dosbox";
 	private DemoGLSurfaceView mGLView;
 	private PowerManager.WakeLock wakeLock;
-	
+
 	static {
 		System.loadLibrary(ApplicationName);
 	}
@@ -29,7 +29,7 @@ public class DosBoxMain extends Activity {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        
+
         mGLView = new DemoGLSurfaceView(this);
         setContentView(mGLView);
         // Receive keyboard events
@@ -38,9 +38,9 @@ public class DosBoxMain extends Activity {
         mGLView.requestFocus();
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, ApplicationName);
-        wakeLock.acquire(); 
+        wakeLock.acquire();
     }
-    
+
 	public void onConfigurationChanged(Configuration newConfig) {
 		super.onConfigurationChanged(newConfig);
 	}
@@ -75,13 +75,13 @@ class DemoRenderer implements GLSurfaceView.Renderer {
 class DemoGLSurfaceView extends GLSurfaceView {
     public DemoGLSurfaceView(Activity context) {
         super(context);
-        mParent = context; 
+        mParent = context;
         mRenderer = new DemoRenderer();
         setRenderer(mRenderer);
     }
 
     @Override
-    public boolean onTouchEvent(final MotionEvent event) 
+    public boolean onTouchEvent(final MotionEvent event)
     {
         // TODO: add multitouch support (added in Android 2.0 SDK)
         int action = -1;
@@ -93,7 +93,7 @@ class DemoGLSurfaceView extends GLSurfaceView {
         	action = 2;
         if (  action >= 0 ) {
             nativeMouse( (int)event.getX(), (int)event.getY(), action );
-        } 
+        }
         return true;
     }
 
@@ -106,7 +106,7 @@ class DemoGLSurfaceView extends GLSurfaceView {
          nativeKey( keyCode, 1 );
          return true;
      }
-	
+
 	@Override
 	public boolean onKeyUp(int keyCode, final KeyEvent event) {
          nativeKey( keyCode, 0 );
