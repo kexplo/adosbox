@@ -21,7 +21,7 @@ public class DosBoxMain extends Activity {
 
 	static {
 		System.loadLibrary(ApplicationName);
-	}
+	} 
 
     /** Called when the activity is first created. */
 	@Override

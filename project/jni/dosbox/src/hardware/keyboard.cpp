@@ -345,11 +345,13 @@ void KEYBOARD_AddKey(KBD_KEYS keytype,bool pressed) {
 		/* Not handled yet. But usuable in mapper for special events */
 		return;
 
+    /*
     case KBD_colon:  //FIXME
         androiFakeShift = true;
         KEYBOARD_AddBuffer(42);
         ret=39;
         break;
+    */
 
 	default:
 		E_Exit("Unsupported key press");
