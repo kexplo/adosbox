@@ -405,7 +405,7 @@ static int SDLCALL MainThreadWrapper(void * dummy)
     freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
     freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
 	int argc = 3;
-	char * argv[] = { "dosbox", "-conf", " /sdcard/dosbox.conf" };
+	char * argv[] = { "dosbox", "-conf", "/sdcard/dosbox.conf" };
 	chdir(SDL_CURDIR_PATH);
 	return main( argc, argv );
 	//return 1;
