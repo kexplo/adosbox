@@ -1340,7 +1340,6 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 	if ( width >= 640 && height >= 480 ) {
 		aspect_ratio = ((float)width / (float)height) * ( 3.0 / 4.0);
 	}
-//	LOG_MSG("ht %d vt %d ratio %f", htotal, vtotal, aspect_ratio );
 
 	if (( width != vga.draw.width) || (height != vga.draw.height) ||
 		(aspect_ratio != vga.draw.aspect_ratio) ||
@@ -1363,9 +1362,11 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 		LOG(LOG_VGA,LOG_NORMAL)("%s width, %s height aspect %f",
 			doublewidth ? "double":"normal",doubleheight ? "double":"normal",aspect_ratio);
 #endif
-		//RENDER_SetSize(width,height,bpp,fps,aspect_ratio,doublewidth,doubleheight);
-		//FIXME
-		RENDER_SetSize(480,320,bpp,fps,aspect_ratio,doublewidth,doubleheight);
+		RENDER_SetSize(width,height,bpp,fps,aspect_ratio,doublewidth,doubleheight);
+
+        // FIXME: for Android phones with resolution 320x480 (e.g. G1, G2)
+		// RENDER_SetSize(480,320,bpp,fps,aspect_ratio,doublewidth,doubleheight);
+
 		vga.draw.delay.framestart = PIC_FullIndex();
 		PIC_AddEvent( VGA_VerticalTimer , (float)vga.draw.delay.vtotal );
 		vga.draw.lines_done = 0;
