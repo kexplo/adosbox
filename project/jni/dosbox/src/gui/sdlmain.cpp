@@ -1995,12 +1995,12 @@ int main(int argc, char* argv[]) {
 	bool parsed_anyconfigfile = false;
 	//First Parse -conf switches
 	while(control->cmdline->FindString("-conf",config_file,true)) {
-        printf("config file: %s\n",  config_file.c_str());
+        	printf("config file: %s\n",  config_file.c_str());
 		if (control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
-    }
+    	}
 
 	//if none found => parse localdir conf
-	config_file = "dosbox.conf";
+	config_file = "/data/data/org.hystudio.dosbox/files/dosbox.conf";
 	if (!parsed_anyconfigfile && control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
 
 	//if none found => parse userlevel conf
