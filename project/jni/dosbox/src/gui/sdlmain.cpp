@@ -1174,9 +1174,12 @@ static void GUI_StartUp(Section * sec) {
 
 #endif	//OPENGL
 	/* Initialize screen for first time */
-    // FIXME: Gerald
-	//sdl.surface=SDL_SetVideoMode(640,400,0,0);
-	sdl.surface=SDL_SetVideoMode(480,320,0,0);
+
+	sdl.surface=SDL_SetVideoMode(640,400,0,0);
+
+    // FIXME: for Android phones with resolution 320x480 (e.g. G1, G2)
+	// sdl.surface=SDL_SetVideoMode(480,320,0,0);
+
 	if (sdl.surface == NULL) E_Exit("Could not initialize video: %s",SDL_GetError());
 	sdl.desktop.bpp=sdl.surface->format->BitsPerPixel;
 	if (sdl.desktop.bpp==24) {
