@@ -26,6 +26,9 @@
 
 /* Determines if the compilers supports always_inline attribute. */
 
+// FIXME HT
+#define C_CORE_INLINE 1
+
 // Modified by Gerald
 // #define C_ATTRIBUTE_ALWAYS_INLINE 1
 #define C_ATTRIBUTE_ALWAYS_INLINE 0
@@ -48,7 +51,7 @@
 
 /* Define to 1 to use recompiling cpu core. Can not be used together with the
    dynamic-x86 core */
-/* #undef C_DYNREC */
+#define C_DYNREC 1
 
 /* Define to 1 to enable floating point emulation */
 #define C_FPU 1
@@ -79,7 +82,7 @@
 #define C_OPENGL 0
 
 /* Define to 1 to enable SDL_sound support */
-#undef C_SDL_SOUND
+/* #undef C_SDL_SOUND */
 
 /* Define to 1 if you have setpriority support */
 #define C_SET_PRIORITY 1
@@ -88,10 +91,10 @@
 /* #define C_SSHOT 1 */
 
 /* The type of cpu this target has */
-#define C_TARGETCPU UNKNOWN
+#define C_TARGETCPU ARMV4LE
 
 /* Define to 1 to use a unaligned memory access */
-#define C_UNALIGNED_MEMORY 1
+/* #define C_UNALIGNED_MEMORY 1 */
 
 /* define to 1 if you have XKBlib.h and X11 lib */
 /* #define C_X11_XKB 1 */
@@ -103,7 +106,7 @@
 #define DIRENT_HAS_D_TYPE 1
 
 /* environ can be included */
-#define ENVIRON_INCLUDED 1
+/* #define ENVIRON_INCLUDED 1 */
 
 /* environ can be linked */
 #define ENVIRON_LINKED 1
@@ -155,6 +158,9 @@
 
 /* Compiling on GNU/Linux */
 /* #define LINUX 1 */
+
+//FIXME HT from s60dosbox
+#define OFFSETOF(TYPE, MEMBER) ((sieze_t) &((TYPE *)0)->MEMBER)
 
 /* Compiling on Mac OS X */
 /* #undef MACOSX */
