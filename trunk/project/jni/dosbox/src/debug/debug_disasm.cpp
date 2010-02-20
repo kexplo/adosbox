@@ -1,9 +1,9 @@
 
 /*
-	Ripped out some stuff from the mame releae to only make it for 386's 
-	Changed some variables to use the standard DOSBox data types 
-	Added my callback opcode 
-	
+	Ripped out some stuff from the mame releae to only make it for 386's
+	Changed some variables to use the standard DOSBox data types
+	Added my callback opcode
+
 */
 
 /*
@@ -64,6 +64,9 @@ Any comments/updates/bug reports to:
 */
 #include "dosbox.h"
 #if C_DEBUG
+
+#ifndef ANDROID_DEBUG
+
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -448,7 +451,7 @@ static char *addr_to_hex(UINT32 addr, int splitup) {
 #endif
 
 	sprintf(buffer, "%08X", addr );
-	
+
   }
 
   return buffer;
@@ -1112,6 +1115,8 @@ int DasmLastOperandSize()
 	return opsize;
 };
 
+
+#endif // ANDROID_DEBUG
 
 #endif
 

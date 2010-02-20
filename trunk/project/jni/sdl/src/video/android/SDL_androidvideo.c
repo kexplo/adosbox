@@ -402,8 +402,8 @@ int ANDROID_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors)
 extern int main( int argc, char ** argv );
 static int SDLCALL MainThreadWrapper(void * dummy)
 {
-    freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
-    freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
+    // freopen("/data/data/org.hystudio.dosbox/files/debug.out", "w+", stdout);
+    // freopen("/data/data/org.hystudio.dosbox/files/debug.err", "w+", stderr);
 	int argc = 3;
 	char * argv[] = { "dosbox", "-conf", "/sdcard/dosbox.conf" };
 	chdir(SDL_CURDIR_PATH);
@@ -579,6 +579,8 @@ JAVA_EXPORT_NAME(DemoGLSurfaceView_nativeKey) ( JNIEnv*  env, jobject  thiz, jin
 extern void
 JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 {
+    // ALOG_DEBUG("DemoRenderer_nativeRender");
+
 	// Set up an array of values to use as the sprite vertices.
 	static GLfloat vertices[] =
 	{
@@ -611,6 +613,9 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 	{
 		if( openglInitialized == GL_State_Init )
 		{
+            ALOG_DEBUG("openglInitialized == GL_State_Init: memx:%d; memy:%d",
+                    memX, memY);
+
 			openglInitialized = GL_State_Ready;
 
 			// Texture sizes should be 2^n
@@ -630,6 +635,8 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 				textY = 512;
 			else
 				textY = 1024;
+
+            ALOG_DEBUG("view port: %d x %d", textX, textY);
 
 			glViewport(0, 0, textX, textY);
 

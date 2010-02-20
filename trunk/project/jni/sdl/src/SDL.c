@@ -49,7 +49,7 @@ extern void SDL_TimerQuit(void);
 #endif
 
 /* The current SDL version */
-static SDL_version version = 
+static SDL_version version =
 	{ SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL };
 
 /* The initialized subsystems */
@@ -228,7 +228,7 @@ void SDL_Quit(void)
 
 	/* Print the number of surfaces not freed */
 	if ( surfaces_allocated != 0 ) {
-		fprintf(stderr, "SDL Warning: %d SDL surfaces extant\n", 
+		fprintf(stderr, "SDL Warning: %d SDL surfaces extant\n",
 							surfaces_allocated);
 	}
 #endif
@@ -332,8 +332,8 @@ unsigned _System LibMain(unsigned hmod, unsigned termination)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-BOOL APIENTRY _DllMainCRTStartup( HANDLE hModule, 
-                       DWORD  ul_reason_for_call, 
+BOOL APIENTRY _DllMainCRTStartup( HANDLE hModule,
+                       DWORD  ul_reason_for_call,
                        LPVOID lpReserved )
 {
 	switch (ul_reason_for_call) {
@@ -348,3 +348,8 @@ BOOL APIENTRY _DllMainCRTStartup( HANDLE hModule,
 #endif /* building DLL with Watcom C */
 
 #endif /* OS/2 elif __WIN32__ */
+
+
+// FIXME
+char __android_dbg_buf[512];
+

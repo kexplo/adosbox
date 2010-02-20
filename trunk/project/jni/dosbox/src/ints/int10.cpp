@@ -71,7 +71,7 @@ static Bitu INT10_Handler(void) {
 		break;
 	case 0x05:								/* Set Active Page */
 		if ((reg_al & 0x80) && IS_TANDY_ARCH) {
-			Bit8u crtcpu=real_readb(BIOSMEM_SEG, BIOSMEM_CRTCPU_PAGE);		
+			Bit8u crtcpu=real_readb(BIOSMEM_SEG, BIOSMEM_CRTCPU_PAGE);
 			switch (reg_al) {
 			case 0x80:
 				reg_bh=crtcpu & 7;
@@ -96,7 +96,7 @@ static Bitu INT10_Handler(void) {
 			real_writeb(BIOSMEM_SEG, BIOSMEM_CRTCPU_PAGE,crtcpu);
 		}
 		else INT10_SetActivePage(reg_al);
-		break;	
+		break;
 	case 0x06:								/* Scroll Up */
 		INT10_ScrollWindow(reg_ch,reg_cl,reg_dh,reg_dl,-reg_al,reg_bh,0xFF);
 		break;
@@ -105,7 +105,7 @@ static Bitu INT10_Handler(void) {
 		break;
 	case 0x08:								/* Read character & attribute at cursor */
 		INT10_ReadCharAttr(&reg_ax,reg_bh);
-		break;						
+		break;
 	case 0x09:								/* Write Character & Attribute at cursor CX times */
 		INT10_WriteChar(reg_al,reg_bl,reg_bh,reg_cx,true);
 		break;
@@ -136,7 +136,7 @@ static Bitu INT10_Handler(void) {
 		reg_bh=real_readb(BIOSMEM_SEG,BIOSMEM_CURRENT_PAGE);
 		reg_al=real_readb(BIOSMEM_SEG,BIOSMEM_CURRENT_MODE)|(real_readb(BIOSMEM_SEG,BIOSMEM_VIDEO_CTL)&0x80);
 		reg_ah=(Bit8u)real_readw(BIOSMEM_SEG,BIOSMEM_NB_COLS);
-		break;					
+		break;
 	case 0x10:								/* Palette functions */
 		if ((machine==MCH_CGA) || ((!IS_VGA_ARCH) && (reg_al>0x02))) break;
 		//TODO: subfunction 0x03 for ega
@@ -199,7 +199,7 @@ static Bitu INT10_Handler(void) {
 		}
 		break;
 	case 0x11:								/* Character generator functions */
-		if (!IS_EGAVGA_ARCH) 
+		if (!IS_EGAVGA_ARCH)
 			break;
 		switch (reg_al) {
 /* Textmode calls */
@@ -298,7 +298,7 @@ graphics_chars:
 				reg_bp=RealOff(int10.rom.font_16_alternate);
 				break;
 			default:
-				LOG(LOG_INT10,LOG_ERROR)("Function 11:30 Request for font %2X",reg_bh);	
+				LOG(LOG_INT10,LOG_ERROR)("Function 11:30 Request for font %2X",reg_bh);
 				break;
 			}
 			if ((reg_bh<=7) || (svgaCard==SVGA_TsengET4K)) {
@@ -317,11 +317,11 @@ graphics_chars:
 		}
 		break;
 	case 0x12:								/* alternate function select */
-		if (!IS_EGAVGA_ARCH) 
+		if (!IS_EGAVGA_ARCH)
 			break;
 		switch (reg_bl) {
 		case 0x10:							/* Get EGA Information */
-			reg_bh=(real_readw(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS)==0x3B4);	
+			reg_bh=(real_readw(BIOSMEM_SEG,BIOSMEM_CRTC_ADDRESS)==0x3B4);
 			reg_bl=3;	//256 kb
 			reg_cl=real_readb(BIOSMEM_SEG,BIOSMEM_SWITCHES) & 0x0F;
 			reg_ch=real_readb(BIOSMEM_SEG,BIOSMEM_SWITCHES) >> 4;
@@ -335,7 +335,7 @@ graphics_chars:
 			else reg_al=0x12;			//fake a success call
 			break;
 		case 0x31:							/* Palette loading on modeset */
-			{   
+			{
 				if (!IS_VGA_ARCH) break;
 				if (svgaCard==SVGA_TsengET4K) reg_al&=1;
 				if (reg_al>1) {
@@ -346,8 +346,8 @@ graphics_chars:
 				if (reg_al&1) temp|=8;		// enable if al=0
 				real_writeb(BIOSMEM_SEG,BIOSMEM_MODESET_CTL,temp);
 				reg_al=0x12;
-				break;	
-			}		
+				break;
+			}
 		case 0x32:							/* Video adressing */
 			if (!IS_VGA_ARCH) break;
 			LOG(LOG_INT10,LOG_ERROR)("Function 12:Call %2X not handled",reg_bl);
@@ -356,7 +356,7 @@ graphics_chars:
 			else reg_al=0x12;			//fake a success call
 			break;
 		case 0x33: /* SWITCH GRAY-SCALE SUMMING */
-			{   
+			{
 				if (!IS_VGA_ARCH) break;
 				if (svgaCard==SVGA_TsengET4K) reg_al&=1;
 				if (reg_al>1) {
@@ -367,10 +367,10 @@ graphics_chars:
 				if (!(reg_al&1)) temp|=2;		// enable if al=0
 				real_writeb(BIOSMEM_SEG,BIOSMEM_MODESET_CTL,temp);
 				reg_al=0x12;
-				break;	
-			}		
+				break;
+			}
 		case 0x34: /* ALTERNATE FUNCTION SELECT (VGA) - CURSOR EMULATION */
-			{   
+			{
 				// bit 0: 0=enable, 1=disable
 				if (!IS_VGA_ARCH) break;
 				if (svgaCard==SVGA_TsengET4K) reg_al&=1;
@@ -381,8 +381,8 @@ graphics_chars:
 				Bit8u temp = real_readb(BIOSMEM_SEG,BIOSMEM_VIDEO_CTL) & 0xfe;
 				real_writeb(BIOSMEM_SEG,BIOSMEM_VIDEO_CTL,temp|reg_al);
 				reg_al=0x12;
-				break;	
-			}		
+				break;
+			}
 		case 0x35:
 			if (!IS_VGA_ARCH) break;
 			LOG(LOG_INT10,LOG_ERROR)("Function 12:Call %2X not handled",reg_bl);
@@ -394,9 +394,9 @@ graphics_chars:
 				reg_al=0;
 				break;
 			}
-			/* 
+			/*
 				Call disables/enables the vga from outputting video,
-				don't support it, but fake a success return 
+				don't support it, but fake a success return
 			*/
 			reg_al=0x12;
 			break;
@@ -534,7 +534,7 @@ graphics_chars:
 					break;
 			}
 			break;
-		case 0x05:							
+		case 0x05:
 			if (reg_bh==0) {				/* Set CPU Window */
 				reg_ah=VESA_SetCPUWindow(reg_bl,reg_dl);
 				reg_al=0x4f;
@@ -667,7 +667,7 @@ graphics_chars:
 static void INT10_Seg40Init(void) {
 	// the default char height
 	real_writeb(BIOSMEM_SEG,BIOSMEM_CHAR_HEIGHT,16);
-	// Clear the screen 
+	// Clear the screen
 	real_writeb(BIOSMEM_SEG,BIOSMEM_VIDEO_CTL,0x60);
 	// Set the basic screen we have
 	real_writeb(BIOSMEM_SEG,BIOSMEM_SWITCHES,0xF9);
@@ -711,7 +711,7 @@ void INT10_Init(Section* /*sec*/) {
 	INT10_InitVGA();
 	if (IS_TANDY_ARCH) SetupTandyBios();
 	/* Setup the INT 10 vector */
-	call_10=CALLBACK_Allocate();	
+	call_10=CALLBACK_Allocate();
 	CALLBACK_Setup(call_10,&INT10_Handler,CB_IRET,"Int 10 video");
 	RealSetVec(0x10,CALLBACK_RealPointer(call_10));
 	//Init the 0x40 segment and init the datastructures in the the video rom area
