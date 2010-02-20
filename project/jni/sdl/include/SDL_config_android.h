@@ -55,4 +55,71 @@
 #define HAVE_MEMCPY 1
 #define HAVE_MEMMOVE 1
 
+// FIXME: Gerald
+#if 0
+#ifndef printf
+#define printf(fmt, args...) \
+        printf("%s:%d:\n    ", __FILE__, __LINE__); \
+        printf(fmt, ##args); \
+        fflush(stdout)
+#endif
+#endif
+
+#define ANDROID_PLATFROM
+#define ANDROID_DEBUG
+
+#ifdef ANDROID_PLATFROM
+#ifdef ANDROID_DEBUG
+
+#define HAVE_MALLOC 1
+#define HAVE_CALLOC 1
+#define HAVE_REALLOC 1
+#define HAVE_FREE 1
+
+#undef printf
+#include <android/log.h>
+#include <string.h>
+extern char __android_dbg_buf[];
+#ifndef ALOG_DEBUG
+#define ALOG_DEBUG(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_DEBUG,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+#endif
+
+#define ALOG_INFO(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_INFO,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#define ALOG_ERROR(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_ERROR,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#define ALOG_WARN(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_WARN,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#else // ANDROID_DEBUG else
+#define ALOG_DEBUG(fmt, args...) 1
+
+#define ALOG_INFO(fmt, args...) 1
+
+#define ALOG_ERROR(fmt, args...) 1
+
+#define ALOG_WARN(fmt, args...) 1
+
+#endif// ANDROID_DEBUG end
+#endif // ANDROID_LOG_DEBUG
+
 #endif /* _SDL_config_minimal_h */

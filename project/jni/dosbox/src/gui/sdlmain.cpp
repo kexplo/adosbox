@@ -270,7 +270,7 @@ static void PauseDOSBox(bool pressed) {
 
 			case SDL_QUIT:
 				// FIXME
-                printf("bad modification!!!");
+                ALOG_ERROR("bad modification!!!");
                 exit(1);
                 // throw(0);
                 break;
@@ -374,19 +374,36 @@ static int int_log2 (int val) {
 
 
 static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
+    ALOG_DEBUG("In GFX_SetupSurfaceScaled");
+
 	Bit16u fixedWidth;
 	Bit16u fixedHeight;
+
+    // FIXME
+    std::string debugstr = "";
+    char buffer[128];
 
 	if (sdl.desktop.fullscreen) {
 		fixedWidth = sdl.desktop.full.fixed ? sdl.desktop.full.width : 0;
 		fixedHeight = sdl.desktop.full.fixed ? sdl.desktop.full.height : 0;
 		sdl_flags |= SDL_FULLSCREEN|SDL_HWSURFACE;
+
+        snprintf(buffer, 128, "\n%s: %d x %d; ", "fullscreen", fixedWidth, fixedHeight);
+        debugstr += buffer;
 	} else {
 		fixedWidth = sdl.desktop.window.width;
 		fixedHeight = sdl.desktop.window.height;
 		sdl_flags |= SDL_HWSURFACE;
-	}
+
+        snprintf(buffer, 128, "\n%s: %d x %d; ", "window", fixedWidth, fixedHeight);
+        debugstr += buffer;
+    }
+    snprintf(buffer, 128, "\n%s: %f x %f; ", "scale", sdl.draw.scalex, sdl.draw.scaley);
+    debugstr += buffer;
+    snprintf(buffer, 128, "\n%s: %f x %f; ", "draw", sdl.draw.width, sdl.draw.height);
+    debugstr += buffer;
 	if (fixedWidth && fixedHeight) {
+        debugstr += "\nfixedHeight !=0 && fixedHeight != 0.";
 		double ratio_w=(double)fixedWidth/(sdl.draw.width*sdl.draw.scalex);
 		double ratio_h=(double)fixedHeight/(sdl.draw.height*sdl.draw.scaley);
 		if ( ratio_w < ratio_h) {
@@ -396,10 +413,16 @@ static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 			sdl.clip.w=(Bit16u)(sdl.draw.width*sdl.draw.scalex*ratio_h);
 			sdl.clip.h=(Bit16u)fixedHeight;
 		}
-		if (sdl.desktop.fullscreen)
+		if (sdl.desktop.fullscreen) {
 			sdl.surface = SDL_SetVideoMode(fixedWidth,fixedHeight,bpp,sdl_flags);
-		else
+            snprintf(buffer, 128, "\n%s: %f x %f; ", "set video mode", fixedWidth, fixedHeight);
+            debugstr += buffer;
+        }
+		else {
 			sdl.surface = SDL_SetVideoMode(sdl.clip.w,sdl.clip.h,bpp,sdl_flags);
+            snprintf(buffer, 128, "\n%s: %f x %f; ", "set video mode", sdl.clip.w, sdl.clip.h);
+            debugstr += buffer;
+        }
 		if (sdl.surface && sdl.surface->flags & SDL_FULLSCREEN) {
 			sdl.clip.x=(Sint16)((sdl.surface->w-sdl.clip.w)/2);
 			sdl.clip.y=(Sint16)((sdl.surface->h-sdl.clip.h)/2);
@@ -407,17 +430,31 @@ static SDL_Surface * GFX_SetupSurfaceScaled(Bit32u sdl_flags, Bit32u bpp) {
 			sdl.clip.x = 0;
 			sdl.clip.y = 0;
 		}
+
+        snprintf(buffer, 128, "\n%s: %f x %f; ", "clip offset", sdl.clip.x, sdl.clip.y);
+        debugstr += buffer;
+        ALOG_DEBUG(debugstr.c_str());
+
 		return sdl.surface;
 	} else {
+        debugstr += "\nfixedHeight ==0 || fixedHeight == 0.";
 		sdl.clip.x=0;sdl.clip.y=0;
 		sdl.clip.w=(Bit16u)(sdl.draw.width*sdl.draw.scalex);
 		sdl.clip.h=(Bit16u)(sdl.draw.height*sdl.draw.scaley);
 		sdl.surface=SDL_SetVideoMode(sdl.clip.w,sdl.clip.h,bpp,sdl_flags);
+
+        snprintf(buffer, 128, "\n%s: %f x %f; ", "clip", sdl.clip.w, sdl.clip.h);
+        debugstr += buffer;
+        ALOG_DEBUG(debugstr.c_str());
+
 		return sdl.surface;
 	}
 }
 
 Bitu GFX_SetSize(Bitu width,Bitu height,Bitu flags,double scalex,double scaley,GFX_CallBack_t callback) {
+    ALOG_DEBUG("in GFX_SetSize: w:%d, h:%d, falgs:%x, scalex:%f, scaley:%f, callback:%d",
+            width, height, flags, scalex, scaley, callback);
+
 	if (sdl.updating)
 		GFX_EndUpdate( 0 );
 
@@ -667,6 +704,10 @@ dosurface:
 	if (retFlags)
 		GFX_Start();
 	if (!sdl.mouse.autoenable) SDL_ShowCursor(sdl.mouse.autolock?SDL_DISABLE:SDL_ENABLE);
+
+    ALOG_DEBUG("clip:w:%d. h:%d, x:%d, y:%d",sdl.clip.w, sdl.clip.h,
+            sdl.clip.x, sdl.clip.y);
+
 	return retFlags;
 }
 
@@ -921,7 +962,7 @@ static void KillSwitch(bool pressed) {
 		return;
 	// FIXME
 	//throw 1;
-    printf("bad modification!!!");
+    ALOG_ERROR("bad modification!!!");
 }
 
 static void SetPriority(PRIORITY_LEVELS level) {
@@ -975,6 +1016,15 @@ static void SetPriority(PRIORITY_LEVELS level) {
 		break;
 	}
 }
+
+/*
+bool getBestMode (int &w, int &h, int bpp, Uint32 flags) {
+    SDL_PixelFormat format;
+    memset();
+    format.BitsPerPixel = bpp;
+    SDL_Rect ** rects = SDL_ListModes (SDL_PixelFormat *format, Uint32 flags)
+}
+*/
 
 extern Bit8u int10_font_14[256 * 14];
 static void OutputString(Bitu x,Bitu y,const char * text,Bit32u color,Bit32u color2,SDL_Surface * output_surface) {
@@ -1329,8 +1379,9 @@ void GFX_LosingFocus(void) {
 }
 
 void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
+    return;
     SDL_keysym keysym = kbevent.keysym;
-    printf("%s:\n\tscancode:%d; ""sym code:%d; ""\tkey modifiers:%x; ""\tunicode: %d\n",
+    ALOG_DEBUG("%s:\n\tscancode:%d; ""sym code:%d; ""\tkey modifiers:%x; ""\tunicode: %d\n",
             pressed? "key pressed" : "key released",
             (unsigned int)keysym.scancode, (unsigned int)keysym.sym ,
             (unsigned int)keysym.mod, (unsigned int)keysym.unicode);
@@ -1570,7 +1621,7 @@ void GFX_Events() {
 						switch (ev.type) {
 						case SDL_QUIT:
 							// FIXME
-							printf("bad modification!!!");
+							ALOG_ERROR("bad modification!!!");
 							exit(1);
 							break;
 							//throw(0); break; // a bit redundant at linux at least as the active events gets before the quit event.
@@ -1607,7 +1658,7 @@ void GFX_Events() {
 			break;
 		case SDL_QUIT:
 			// FIXME
-            printf("bad modification!!!");
+            ALOG_ERROR("bad modification!!!");
             exit(1);
 			// throw(0);
 			break;
@@ -1627,7 +1678,7 @@ void GFX_Events() {
         case SDL_KEYDOWN: {
             dumpKey(event.key, true);
              if (androidKeyProc(event, true)) {
-                 printf("key passed to dosx MAPPER_CheckEvent\n");
+                 // ALOG_DEBUG("key passed to dosx MAPPER_CheckEvent\n");
             // if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, true))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
                 MAPPER_CheckEvent(&event);
@@ -1637,7 +1688,7 @@ void GFX_Events() {
 		case SDL_KEYUP:
             dumpKey(event.key, false);
             if (androidKeyProc(event, false)) {
-                 printf("key passed to dosx MAPPER_CheckEvent\n");
+                 // ALOG_DEBUG("key passed to dosx MAPPER_CheckEvent\n");
             // if (androidKeyProc(event.key.keysym.scancode, event.key.keysym.sym, false))
             // if(premapper.KeyPressed(event.key.keysym.sym)) MAPPER_CheckEvent(&event);
                 MAPPER_CheckEvent(&event);
@@ -1772,12 +1823,12 @@ static void show_warning(char const * const message) {
 	int x = 120,y = 20;
 	std::string m(message),m2;
 	std::string::size_type a,b,c,d;
-   
+
 	while(m.size()) { //Max 50 characters. break on space before or on a newline
 		c = m.find('\n');
 		d = m.rfind(' ',50);
 		if(c>d) a=b=d; else a=b=c;
-		if( a != std::string::npos) b++; 
+		if( a != std::string::npos) b++;
 		m2 = m.substr(0,a); m.erase(0,b);
 		OutputString(x,y,m2.c_str(),0xffffffff,0,splash_surf);
 		y += 20;
@@ -1995,7 +2046,7 @@ int main(int argc, char* argv[]) {
 	bool parsed_anyconfigfile = false;
 	//First Parse -conf switches
 	while(control->cmdline->FindString("-conf",config_file,true)) {
-        	printf("config file: %s\n",  config_file.c_str());
+        	ALOG_DEBUG("config file: %s\n",  config_file.c_str());
 		if (control->ParseConfigFile(config_file.c_str())) parsed_anyconfigfile = true;
     	}
 

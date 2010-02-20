@@ -21,6 +21,9 @@
 #include "dosbox.h"
 
 #if C_DEBUG
+
+#ifndef ANDROID_DEBUG
+
 #include "control.h"
 #include <stdlib.h>
 #include <stdarg.h>
@@ -284,4 +287,5 @@ void DBGUI_StartUp(void) {
 
 }
 
+#endif //ANDROID_DEBUG
 #endif

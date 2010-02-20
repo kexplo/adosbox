@@ -49,12 +49,6 @@
 extern "C" {
 #endif
 
-// FIXME: Gerald
-#define printf(fmt, args...) \
-        printf("%s:%d:\n    ", __FILE__, __LINE__); \
-        printf(fmt, ##args); \
-        fflush(stdout)
-
 /** @file SDL.h
  *  @note As of version 0.5, SDL is loaded dynamically into the application
  */

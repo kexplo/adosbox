@@ -924,6 +924,10 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 	float fps; Bitu clock;
 	Bitu htotal, hdend, hbstart, hbend, hrstart, hrend;
 	Bitu vtotal, vdend, vbstart, vbend, vrstart, vrend;
+
+    ALOG_DEBUG("IS_EGAVGA_ARCH: %s; IS_VGA_ARCH: %s; vga mode: %d; svgacard: %d",
+            IS_EGAVGA_ARCH?"yes":"no", IS_VGA_ARCH?"yes":"no", (int)vga.mode, (int)svgaCard);
+
 	if (IS_EGAVGA_ARCH) {
 		htotal = vga.crtc.horizontal_total;
 		hdend = vga.crtc.horizontal_display_end;
@@ -1140,6 +1144,7 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 	bool doubleheight=false;
 	bool doublewidth=false;
 
+    ALOG_DEBUG("initial: width:%d; height:%d", width, height);
 	//Set the bpp
 	Bitu bpp;
 	switch (vga.mode) {
@@ -1340,6 +1345,8 @@ void VGA_SetupDrawing(Bitu /*val*/) {
 	if ( width >= 640 && height >= 480 ) {
 		aspect_ratio = ((float)width / (float)height) * ( 3.0 / 4.0);
 	}
+
+    ALOG_DEBUG("size: %d x %d; vga.draw: %d x %d", width, height, vga.draw.width, vga.draw.height);
 
 	if (( width != vga.draw.width) || (height != vga.draw.height) ||
 		(aspect_ratio != vga.draw.aspect_ratio) ||

@@ -41,6 +41,7 @@
 
 /* Define to 1 to enable internal debugger, requires libcurses */
 /* #undef C_DEBUG */
+#define C_DEBUG 1
 
 /* Define to 1 if you want serial passthrough support (Win32, Posix and OS/2).
    */
@@ -71,6 +72,7 @@
 
 /* Define to 1 to enable heavy debugging, also have to enable C_DEBUG */
 /* #undef C_HEAVY_DEBUG */
+#define C_HEAVY_DEBUG 1
 
 /* Define to 1 to enable IPX over Internet networking, requires SDL_net */
 /* #undef C_IPX */
@@ -325,11 +327,63 @@ typedef         double     Real64;
     fflush( stdout )
 #endif
 
+#define ANDROID_PLATFROM
+#define ANDROID_DEBUG
+
+#ifdef ANDROID_PLATFROM
+#ifdef ANDROID_DEBUG
 #undef printf
+#include <android/log.h>
+#include <string.h>
+extern char __android_dbg_buf[];
+#define ALOG_DEBUG(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_DEBUG,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#define ALOG_INFO(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_INFO,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#define ALOG_ERROR(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_ERROR,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+
+#define ALOG_WARN(fmt, args...) \
+    do { \
+        snprintf(__android_dbg_buf, 512, "%s:%d:  ", __FILE__, __LINE__); \
+        snprintf(__android_dbg_buf+strlen(__android_dbg_buf), 512-strlen(__android_dbg_buf), fmt, ##args); \
+        __android_log_print(ANDROID_LOG_WARN,  "adosbox", "%s", __android_dbg_buf); \
+    } while(0)
+#define printf(fmt, args...) \
+      ALOG_INFO(fmt, ##args)
+
+#else // ANDROID_DEBUG else
+#define ALOG_DEBUG(fmt, args...)
+
+#define ALOG_INFO(fmt, args...)
+
+#define ALOG_ERROR(fmt, args...)
+
+#define ALOG_WARN(fmt, args...)
+
+#endif// ANDROID_DEBUG end
+
+#if 0
 #define printf(fmt, args...) \
     printf("%s:%d:\n    ", __FILE__, __LINE__); \
     printf(fmt, ##args); \
     fflush(stdout)
+#endif
+#endif // ANDROID_LOG_DEBUG
 
 //#define DEBUG 1
 
