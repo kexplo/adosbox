@@ -40,6 +40,9 @@ LOCAL_CFLAGS := $(foreach D, $(CG_SUBDIRS), -I$(CG_SRCDIR)/$(D)) \
 				-I$(SYSROOT)/usr/include
 
 
+LOCAL_CPPFLAGS := $(LOCAL_CFLAGS)
+LOCAL_CXXFLAGS := $(LOCAL_CFLAGS)
+
 #Change C++ file extension as appropriate
 LOCAL_CPP_EXTENSION := .cpp
 
