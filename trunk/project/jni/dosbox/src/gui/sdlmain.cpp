@@ -1379,6 +1379,8 @@ void GFX_LosingFocus(void) {
 }
 
 
+// #define ANDROID_KEY_DEBUG
+
 #ifdef ANDROID_KEY_DEBUG
 void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
     SDL_keysym keysym = kbevent.keysym;
@@ -1440,7 +1442,7 @@ int softAndoridShiftDown = 0;
 bool isAndroidSchduleShiftUp = false;
 bool isAndroidSchduleShiftDown = false;
 
-bool volumnControl(SDL_Event event, bool pressed) {
+bool volumnControl(SDL_Event &event, bool pressed) {
     unsigned int key = event.key.keysym.scancode;
     if (pressed) {
         if (key == KEYCODE_VOLUME_UP || key == KEYCODE_VOLUME_DOWN)
@@ -1467,23 +1469,75 @@ bool volumnControl(SDL_Event event, bool pressed) {
     }
 }
 
-bool symKey(SDL_Event &event, bool pressed) {
+bool ctrlKeyDwn = false;
+
+bool ctrlKey(SDL_Event &event, bool pressed) {
     unsigned int key = event.key.keysym.scancode;
     if (pressed) {
-        if (key == KEYCODE_DPAD_CENTER)
+        if (key == KEYCODE_DPAD_CENTER) {
+            pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
             return true;
-        else
+        } else
             return false;
-    }
-
-    //depressed
-    if (key == KEYCODE_DPAD_CENTER) {
-        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
-        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
-        return true;
     } else {
-        return false;
+        //depressed
+        if (key == KEYCODE_DPAD_CENTER) {
+            pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+            return true;
+        } else {
+            return false;
+        }
     }
+}
+
+bool speedControlKey(SDL_Event &event, bool pressed) {
+    unsigned int key = event.key.keysym.scancode;
+    if (ctrlKeyDwn) {
+        if (key == KEYCODE_1) { //decrease frameskip
+            if (pressed) return true;
+            else {
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F7, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F7, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                return true;
+            }
+        } else if (key == KEYCODE_2) { //increase frameskip
+            if (pressed) return true;
+            else {
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F8, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F8, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                return true;
+            }
+        } else if (key == KEYCODE_7) { //decrease cpu cycles
+            if (pressed) return true;
+            else {
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F11, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F11, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                return true;
+            }
+        } else if (key == KEYCODE_8) { //increase cpu cycles
+            if (pressed) return true;
+            else {
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F12, true);
+                pushKbEventSym(KEYCODE_LAST, SDLK_F12, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+                pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+    return false;
 }
 
 bool androidKeyProc(SDL_Event event, bool pressed) {
@@ -1491,11 +1545,15 @@ bool androidKeyProc(SDL_Event event, bool pressed) {
     SDLKey sym = event.key.keysym.sym;
     AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
 
-    if (key == KEYCODE_LAST) //android key not used
+    if (key == KEYCODE_LAST) {//android key not used
+        if (sym == SDLK_LCTRL)
+            ctrlKeyDwn = pressed;
         return true;
+    }
 
-    if (volumnControl(event, pressed)) return false;
-    if (symKey(event, pressed)) return false;
+    // if (volumnControl(event, pressed)) return false;
+    if (speedControlKey(event, pressed)) return false;
+    if (ctrlKey(event, pressed)) return false;
 
     if (event.key.userData == 1) { //mapped already
         switch (key) {
