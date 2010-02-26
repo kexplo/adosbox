@@ -1409,102 +1409,87 @@ bool pushKbEvent(KEYCODES_ANDROID scancode, bool pressed) {
     return false;
 }
 
+bool pushKbEventSym(KEYCODES_ANDROID scancode, SDLKey sym, bool pressed) {
+	SDL_Event event;
+    SDL_memset(&event, 0, sizeof(event));
+
+    event.type = pressed?SDL_KEYDOWN:SDL_KEYUP;
+    event.key.state = pressed?SDL_PRESSED:SDL_RELEASED;
+
+    SDL_keysym keysym;
+    keysym.scancode = scancode;
+    keysym.sym = sym;
+
+    event.key.keysym = keysym;
+    event.key.userData = 1; //already mapped
+
+    if ( (SDL_EventOK == NULL) || SDL_EventOK(&event) ) {
+        return 0 == SDL_PushEvent(&event);
+    }
+    return false;
+}
+
 // bool isAndroidShiftDown = false;
 int softAndoridShiftDown = 0;
 bool isAndroidSchduleShiftUp = false;
 bool isAndroidSchduleShiftDown = false;
 
-/*
-bool androidKeyProc(unsigned int key, SDLKey sym, bool pressed) {
-    AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
-
-    switch (key) {
-        case KEYCODE_SHIFT_LEFT:
-        case KEYCODE_SHIFT_RIGHT:
-            if (pressed) {
-                if (isAndroidSchduleShiftDown)
-                    ++softAndoridShiftDown;
-                isAndroidSchduleShiftDown = false;
-                isAndroidShiftDown = true;
-            }
-    }
-
-    AndroidKM *km = NULL;
-    // enum Android_KeyMap_Result result = keyEvtMgr->dispatch(key, sym, pressed, &km);
-    enum Android_KeyMap_Result result =
-        keyEvtMgr->dispatch(key, key, pressed, &km, softAndoridShiftDown==0?-1:KEYCODE_SHIFT_LEFT);
-
-    switch (key) {
-        case KEYCODE_SHIFT_LEFT:
-        case KEYCODE_SHIFT_RIGHT:
-            if (!pressed) {
-                if (softAndoridShiftDown > 0 && isAndroidSchduleShiftUp)
-                    --softAndoridShiftDown;
-                isAndroidSchduleShiftUp = false;
-                isAndroidShiftDown = false;
-                if (softAndoridShiftDown > 0) --softAndoridShiftDown;
-            }
-    }
-
-    switch (result) {
-        case Android_Key_MC:
-            return false;
-            break;
-        case Android_Key_UnMapped: {
+bool volumnControl(SDL_Event event, bool pressed) {
+    unsigned int key = event.key.keysym.scancode;
+    if (pressed) {
+        if (key == KEYCODE_VOLUME_UP || key == KEYCODE_VOLUME_DOWN)
             return true;
-            break;
-        }
-        case Android_Key_Mapped: {
-            printf("\n");
-            if (km != NULL) {
-                bool cont = true;
-                if (pressed == true && km->needShift && !softAndoridShiftDown) {
-
-                    printf("fake shift down !!!\n");
-                    pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
-                    isAndroidSchduleShiftDown = true;
-
-                    if (km->getTo() == key) {
-                        cont = false;
-                        pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
-                    }
-                }
-                printf("\n");
-
-                if (km->getTo() != key) {
-                    printf("\n key is mapped to:%d !!!\n", km->getTo());
-                    pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
-                    cont = false;
-                }
-                printf("\n");
-
-                if (!isAndroidSchduleShiftUp) {
-                    if (pressed == false && km->needShift && softAndoridShiftDown) {
-                        if (km->getTo() == key) {
-                            pushKbEvent((KEYCODES_ANDROID)km->getTo(), pressed);
-                            cont = false;
-                        }
-                        printf("\n fake shift up !!!\n");
-                        pushKbEvent(KEYCODE_SHIFT_LEFT, pressed);
-                        isAndroidSchduleShiftUp = !isAndroidSchduleShiftUp;
-                    }
-                }
-                return cont;
-            }
+        else
             return false;
-            break;
-            }
-        default:
-            break;
     }
-    return true;
+
+    //depressed
+    if (key == KEYCODE_VOLUME_UP) {
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+        pushKbEventSym(KEYCODE_LAST, SDLK_F12, true);
+        pushKbEventSym(KEYCODE_LAST, SDLK_F12, false);
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+        return true;
+    } else if (key == KEYCODE_VOLUME_DOWN) {
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+        pushKbEventSym(KEYCODE_LAST, SDLK_F11, true);
+        pushKbEventSym(KEYCODE_LAST, SDLK_F11, false);
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+        return true;
+    } else {
+        return false;
+    }
 }
-*/
+
+bool symKey(SDL_Event &event, bool pressed) {
+    unsigned int key = event.key.keysym.scancode;
+    if (pressed) {
+        if (key == KEYCODE_SYM)
+            return true;
+        else
+            return false;
+    }
+
+    //depressed
+    if (key == KEYCODE_SYM) {
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
+        pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
+        return true;
+    } else {
+        return false;
+    }
+}
 
 bool androidKeyProc(SDL_Event event, bool pressed) {
     unsigned int key = event.key.keysym.scancode;
     SDLKey sym = event.key.keysym.sym;
     AndroidKeyEvtMgr *keyEvtMgr = AndroidKeyEvtMgr::getInstance();
+
+    if (key == KEYCODE_LAST) //android key not used
+        return true;
+
+    if (volumnControl(event, pressed)) return false;
+    if (symKey(event, pressed)) return false;
 
     if (event.key.userData == 1) { //mapped already
         switch (key) {
@@ -1526,8 +1511,8 @@ bool androidKeyProc(SDL_Event event, bool pressed) {
         case Android_Key_MC:
             if ((key == KEYCODE_ALT_LEFT || key == KEYCODE_ALT_RIGHT)
                     && !pressed) { //pass alt
-                pushKbEvent((KEYCODES_ANDROID)key, true);
-                pushKbEvent((KEYCODES_ANDROID)key, false);
+                pushKbEvent((KEYCODES_ANDROID)KEYCODE_ALT_RIGHT, true);
+                pushKbEvent((KEYCODES_ANDROID)KEYCODE_ALT_RIGHT, false);
                 return true;
             } else
                 return false;
