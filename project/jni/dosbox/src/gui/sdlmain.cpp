@@ -1378,6 +1378,8 @@ void GFX_LosingFocus(void) {
 	MAPPER_LosingFocus();
 }
 
+
+#ifdef ANDROID_KEY_DEBUG
 void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
     SDL_keysym keysym = kbevent.keysym;
     ALOG_DEBUG("%s:\n\tscancode:%d; ""sym code:%d; ""\tkey modifiers:%x; ""\tunicode: %d\n",
@@ -1385,6 +1387,10 @@ void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
             (unsigned int)keysym.scancode, (unsigned int)keysym.sym ,
             (unsigned int)keysym.mod, (unsigned int)keysym.unicode);
 }
+#else
+void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
+}
+#endif
 
 void MAPPER_CheckEvent(SDL_Event * event);
 
@@ -1464,14 +1470,14 @@ bool volumnControl(SDL_Event event, bool pressed) {
 bool symKey(SDL_Event &event, bool pressed) {
     unsigned int key = event.key.keysym.scancode;
     if (pressed) {
-        if (key == KEYCODE_SYM)
+        if (key == KEYCODE_DPAD_CENTER)
             return true;
         else
             return false;
     }
 
     //depressed
-    if (key == KEYCODE_SYM) {
+    if (key == KEYCODE_DPAD_CENTER) {
         pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, true);
         pushKbEventSym(KEYCODE_LAST, SDLK_LCTRL, false);
         return true;
