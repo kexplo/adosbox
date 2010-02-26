@@ -1379,7 +1379,6 @@ void GFX_LosingFocus(void) {
 }
 
 void dumpKey(SDL_KeyboardEvent &kbevent, bool pressed) {
-    return;
     SDL_keysym keysym = kbevent.keysym;
     ALOG_DEBUG("%s:\n\tscancode:%d; ""sym code:%d; ""\tkey modifiers:%x; ""\tunicode: %d\n",
             pressed? "key pressed" : "key released",
@@ -1525,7 +1524,13 @@ bool androidKeyProc(SDL_Event event, bool pressed) {
 
     switch (result) {
         case Android_Key_MC:
-            return false;
+            if ((key == KEYCODE_ALT_LEFT || key == KEYCODE_ALT_RIGHT)
+                    && !pressed) { //pass alt
+                pushKbEvent((KEYCODES_ANDROID)key, true);
+                pushKbEvent((KEYCODES_ANDROID)key, false);
+                return true;
+            } else
+                return false;
             break;
         case Android_Key_UnMapped: {
             return true;
