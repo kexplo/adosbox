@@ -2,8 +2,8 @@ package org.hystudio.dosbox;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -86,29 +86,6 @@ class DemoRenderer implements GLSurfaceView.Renderer {
 class DemoGLSurfaceView extends GLSurfaceView {
 	public DemoGLSurfaceView(Activity context) {
 		super(context);
-
-		// Copy the configuration file from sdcard to
-		// /data/data/org.hystudio.dosbox/files/
-		File srcFile = new File("/sdcard/dosbox.conf");
-		File destFile = new File(
-				"/data/data/org.hystudio.dosbox/files/dosbox.conf");
-		if (srcFile.exists()) {
-			try {
-				InputStream in = new FileInputStream(srcFile);
-				OutputStream out = new FileOutputStream(destFile);
-				byte[] buf = new byte[1024];
-				int len;
-				while ((len = in.read(buf)) > 0) {
-					out.write(buf, 0, len);
-				}
-				in.close();
-				out.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
-		}
-
 		mParent = context;
 		mRenderer = new DemoRenderer();
 		setRenderer(mRenderer);
@@ -125,7 +102,8 @@ class DemoGLSurfaceView extends GLSurfaceView {
 		if (event.getAction() == MotionEvent.ACTION_MOVE)
 			action = 2;
 		if (action >= 0) {
-			nativeMouse((int) event.getX(), (int) event.getY(), action);
+			// Disable Mouse for the moment
+			//nativeMouse((int) event.getX(), (int) event.getY(), action);
 		}
 		return true;
 	}
