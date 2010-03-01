@@ -1,12 +1,5 @@
 package org.hystudio.dosbox;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -70,7 +63,7 @@ class DemoRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void exitApp() {
-		nativeDone();
+		nativeDone(); 
 	};
 
 	private static native void nativeInit();
