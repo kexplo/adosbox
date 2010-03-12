@@ -91,11 +91,6 @@ struct SDL_PrivateVideoData {
 
 static int sWindowWidth  = 320;
 static int sWindowHeight = 480;
-static SDL_mutex * WaitForNativeRender = NULL;
-static SDL_cond * WaitForNativeRender1 = NULL;
-static enum { Render_State_Started, Render_State_Processing, Render_State_Finished }
-	WaitForNativeRenderState = Render_State_Finished;
-// Pointer to in-memory video surface
 static int memX = 0;
 static int memY = 0;
 static void * memBuffer1 = NULL;
@@ -204,8 +199,6 @@ int ANDROID_VideoInit(_THIS, SDL_PixelFormat *vformat)
 	SDL_modelist[2]->w = 320; SDL_modelist[2]->h = 200; // Always available on any screen and any orientation
 	SDL_modelist[3] = NULL;
 
-	WaitForNativeRender = SDL_CreateMutex();
-	WaitForNativeRender1 = SDL_CreateCond();
 	/* We're done! */
 	return(0);
 }
@@ -286,10 +279,6 @@ void ANDROID_VideoQuit(_THIS)
 	if( memBuffer2 )
 		SDL_free( memBuffer2 );
 	memBuffer2 = NULL;
-	SDL_DestroyMutex( WaitForNativeRender );
-	WaitForNativeRender = NULL;
-	SDL_DestroyCond( WaitForNativeRender1 );
-	WaitForNativeRender1 = NULL;
 
 	int i;
 
@@ -340,53 +329,7 @@ static void ANDROID_UpdateRects(_THIS, int numrects, SDL_Rect *rects)
 
 static int ANDROID_FlipHWSurface(_THIS, SDL_Surface *surface)
 {
-	//__android_log_print(ANDROID_LOG_INFO, "libSDL", "Frame is ready to render");
-	SDL_mutexP(WaitForNativeRender);
-	while( WaitForNativeRenderState != Render_State_Finished )
-	{
-		if( SDL_CondWaitTimeout( WaitForNativeRender1, WaitForNativeRender, 1000 ) != 0 )
-		{
-			//__android_log_print(ANDROID_LOG_INFO, "libSDL", "Frame failed to render");
-			SDL_mutexV(WaitForNativeRender);
-			return(0);
-		}
-	}
-
-	WaitForNativeRenderState = Render_State_Started;
-
-	SDL_CondSignal(WaitForNativeRender1);
-
-	if( surface->flags & SDL_DOUBLEBUF )
-	{
-
-		if( WaitForNativeRenderState != Render_State_Started )
-			SDL_CondWaitTimeout( WaitForNativeRender1, WaitForNativeRender, 1000 );
-
-		if( WaitForNativeRenderState != Render_State_Started )
-		{
-			//__android_log_print(ANDROID_LOG_INFO, "libSDL", "Frame rendering done");
-			if( memBuffer == memBuffer1 )
-				memBuffer = memBuffer2;
-			else
-				memBuffer = memBuffer1;
-		}
-
-		surface->pixels = memBuffer;
-	}
-	else
-	{
-		while( WaitForNativeRenderState != Render_State_Finished )
-		{
-			if( SDL_CondWaitTimeout( WaitForNativeRender1, WaitForNativeRender, 1000 ) != 0 )
-			{
-				SDL_mutexV(WaitForNativeRender);
-				return(0);
-			};
-		}
-	}
-
-	SDL_mutexV(WaitForNativeRender);
-
+    //TODO: Add double buffering back in
 	processAndroidTrackballKeyDelays( -1, 0 );
 
 	return(0);
@@ -448,14 +391,14 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeDone) ( JNIEnv*  env, jobject  thiz )
 
 enum MOUSE_ACTION { MOUSE_DOWN = 0, MOUSE_UP=1, MOUSE_MOVE=2 };
 
+//TODO: Call this nativeTouchscreen or something
 extern void
 JAVA_EXPORT_NAME(DemoGLSurfaceView_nativeMouse) ( JNIEnv*  env, jobject  thiz, jint x, jint y, jint action )
 {
-	//__android_log_print(ANDROID_LOG_INFO, "libSDL", "mouse event %i at (%03i, %03i)", action, x, y);
+    //Always fire off the motion event
+	SDL_PrivateMouseMotion(0, 0, x, y);
 	if( action == MOUSE_DOWN || action == MOUSE_UP )
-		SDL_PrivateMouseButton( (action == MOUSE_DOWN) ? SDL_PRESSED : SDL_RELEASED, 1, x, y );
-	if( action == MOUSE_MOVE )
-		SDL_PrivateMouseMotion(0, 0, x, y);
+		SDL_PrivateMouseButton( (action == MOUSE_DOWN) ? SDL_PRESSED : SDL_RELEASED, 1, 0, 0 );
 }
 
 // FIXME
@@ -609,6 +552,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 	int textX, textY;
 	void * memBufferTemp;
 
+    //TODO: Move this to an initialization function
 	if( memBuffer && openglInitialized != GL_State_Uninit2 )
 	{
 		if( openglInitialized == GL_State_Init )
@@ -712,34 +656,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 			return;
 		}
 
-		if( WaitForNativeRender )
-		{
-			SDL_mutexP(WaitForNativeRender);
-
-			WaitForNativeRenderState = Render_State_Finished;
-			SDL_CondSignal(WaitForNativeRender1);
-
-			while( WaitForNativeRenderState != Render_State_Started )
-			{
-				if( SDL_CondWaitTimeout( WaitForNativeRender1, WaitForNativeRender, 1000 ) != 0 )
-				{
-					//__android_log_print(ANDROID_LOG_INFO, "libSDL", "Frame failed to render");
-					SDL_mutexV(WaitForNativeRender);
-					return;
-				}
-			}
-
-			memBufferTemp = memBuffer;
-
-			WaitForNativeRenderState = Render_State_Processing;
-
-			SDL_CondSignal(WaitForNativeRender1);
-
-			SDL_mutexV(WaitForNativeRender);
-		}
-		else
-			memBufferTemp = memBuffer;
-
+		memBufferTemp = memBuffer;
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, memX, memY, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, memBufferTemp);
 
 		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -749,7 +666,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 	}
 	else
 	{
-		/*
+
 		// Flash the screen
 		if( clearColor >= 1.0f )
 			clearColorDir = -1;
@@ -760,7 +677,7 @@ JAVA_EXPORT_NAME(DemoRenderer_nativeRender) ( JNIEnv*  env, jobject  thiz )
 		glClearColor(clearColor,clearColor,clearColor,0);
 		glClear(GL_COLOR_BUFFER_BIT);
 		SDL_Delay(50);
-		*/
+
 	}
 }
 
