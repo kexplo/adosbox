@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: vga_memory.cpp,v 1.52 2009/03/22 21:04:41 c2woody Exp $ */
+/* $Id: vga_memory.cpp,v 1.53 2009-07-04 21:23:35 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +51,7 @@
 #define MEM_CHANGED( _MEM ) vga.changes.map[ (_MEM) >> VGA_CHANGE_SHIFT ] |= vga.changes.writeMask;
 //#define MEM_CHANGED( _MEM ) vga.changes.map[ (_MEM) >> VGA_CHANGE_SHIFT ] = 1;
 #else
-#define MEM_CHANGED( _MEM )
+#define MEM_CHANGED( _MEM ) 
 #endif
 
 #define TANDY_VIDBASE(_X_)  &MemBase[ 0x80000 + (_X_)]
@@ -98,22 +98,23 @@ INLINE static Bit32u ModeOperation(Bit8u val) {
 	Bit32u full;
 	switch (vga.config.write_mode) {
 	case 0x00:
-		// Write Mode 0: In this mode, the host data is first rotated as per the Rotate Count field, then the Enable Set/Reset mechanism selects data from this or the Set/Reset field. Then the selected Logical Operation is performed on the resulting data and the data in the latch register. Then the Bit Mask field is used to select which bits come from the resulting data and which come from the latch register. Finally, only the bit planes enabled by the Memory Plane Write Enable field are written to memory.
+		// Write Mode 0: In this mode, the host data is first rotated as per the Rotate Count field, then the Enable Set/Reset mechanism selects data from this or the Set/Reset field. Then the selected Logical Operation is performed on the resulting data and the data in the latch register. Then the Bit Mask field is used to select which bits come from the resulting data and which come from the latch register. Finally, only the bit planes enabled by the Memory Plane Write Enable field are written to memory. 
 		val=((val >> vga.config.data_rotate) | (val << (8-vga.config.data_rotate)));
 		full=ExpandTable[val];
-		full=(full & vga.config.full_not_enable_set_reset) | vga.config.full_enable_and_set_reset;
+		full=(full & vga.config.full_not_enable_set_reset) | vga.config.full_enable_and_set_reset; 
 		full=RasterOp(full,vga.config.full_bit_mask);
 		break;
 	case 0x01:
-		// Write Mode 1: In this mode, data is transferred directly from the 32 bit latch register to display memory, affected only by the Memory Plane Write Enable field. The host data is not used in this mode.
+		// Write Mode 1: In this mode, data is transferred directly from the 32 bit latch register to display memory, affected only by the Memory Plane Write Enable field. The host data is not used in this mode. 
 		full=vga.latch.d;
 		break;
 	case 0x02:
-		//Write Mode 2: In this mode, the bits 3-0 of the host data are replicated across all 8 bits of their respective planes. Then the selected Logical Operation is performed on the resulting data and the data in the latch register. Then the Bit Mask field is used to select which bits come from the resulting data and which come from the latch register. Finally, only the bit planes enabled by the Memory Plane Write Enable field are written to memory.
+		//Write Mode 2: In this mode, the bits 3-0 of the host data are replicated across all 8 bits of their respective planes. Then the selected Logical Operation is performed on the resulting data and the data in the latch register. Then the Bit Mask field is used to select which bits come from the resulting data and which come from the latch register. Finally, only the bit planes enabled by the Memory Plane Write Enable field are written to memory. 
 		full=RasterOp(FillTable[val&0xF],vga.config.full_bit_mask);
 		break;
 	case 0x03:
 		// Write Mode 3: In this mode, the data in the Set/Reset field is used as if the Enable Set/Reset field were set to 1111b. Then the host data is first rotated as per the Rotate Count field, then logical ANDed with the value of the Bit Mask field. The resulting value is used on the data obtained from the Set/Reset field in the same way that the Bit Mask field would ordinarily be used. to select which bits come from the expansion of the Set/Reset field and which come from the latch register. Finally, only the bit planes enabled by the Memory Plane Write Enable field are written to memory.
+		val=((val >> vga.config.data_rotate) | (val << (8-vga.config.data_rotate)));
 		full=RasterOp(vga.config.full_set_reset,ExpandTable[val] & vga.config.full_bit_mask);
 		break;
 	default:
@@ -134,7 +135,7 @@ INLINE static Bit32u ModeOperation(Bit8u val) {
 static struct {
 	Bitu base, mask;
 } vgapages;
-
+	
 class VGA_UnchainedRead_Handler : public PageHandler {
 public:
 	Bitu readHandler(PhysPt start) {
@@ -160,7 +161,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED2(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0) |
 			(readHandler(addr+1) << 8);
 	}
@@ -168,7 +169,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED2(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0)  |
 			(readHandler(addr+1) << 8)  |
 			(readHandler(addr+2) << 16) |
@@ -193,21 +194,21 @@ public:
 
 		Bit32u colors0_3, colors4_7;
 		VGA_Latch temp;temp.d=(pixels.d>>4) & 0x0f0f0f0f;
-		colors0_3 =
+		colors0_3 = 
 			Expand16Table[0][temp.b[0]] |
 			Expand16Table[1][temp.b[1]] |
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(Bit32u *)write_pixels=colors0_3;
 		temp.d=pixels.d & 0x0f0f0f0f;
-		colors4_7 =
+		colors4_7 = 
 			Expand16Table[0][temp.b[0]] |
 			Expand16Table[1][temp.b[1]] |
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(Bit32u *)(write_pixels+4)=colors4_7;
 	}
-public:
+public:	
 	VGA_ChainedEGA_Handler()  {
 		flags=PFLAG_NOCODE;
 	}
@@ -246,7 +247,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0) |
 			(readHandler(addr+1) << 8);
 	}
@@ -254,7 +255,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0)  |
 			(readHandler(addr+1) << 8)  |
 			(readHandler(addr+2) << 16) |
@@ -277,21 +278,21 @@ public:
 
 		Bit32u colors0_3, colors4_7;
 		VGA_Latch temp;temp.d=(pixels.d>>4) & 0x0f0f0f0f;
-			colors0_3 =
+			colors0_3 = 
 			Expand16Table[0][temp.b[0]] |
 			Expand16Table[1][temp.b[1]] |
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(Bit32u *)write_pixels=colors0_3;
 		temp.d=pixels.d & 0x0f0f0f0f;
-		colors4_7 =
+		colors4_7 = 
 			Expand16Table[0][temp.b[0]] |
 			Expand16Table[1][temp.b[1]] |
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(Bit32u *)(write_pixels+4)=colors4_7;
 	}
-public:
+public:	
 	VGA_UnchainedEGA_Handler()  {
 		flags=PFLAG_NOCODE;
 	}
@@ -357,7 +358,7 @@ public:
 		addr = CHECKED(addr);
 		if (GCC_UNLIKELY(addr & 1))
 			return
-				(readHandler<Bit8u>( addr+0 ) << 0 ) |
+				(readHandler<Bit8u>( addr+0 ) << 0 ) | 
 				(readHandler<Bit8u>( addr+1 ) << 8 );
 		else
 			return readHandler<Bit16u>( addr );
@@ -368,9 +369,9 @@ public:
 		addr = CHECKED(addr);
 		if (GCC_UNLIKELY(addr & 3))
 			return
-				(readHandler<Bit8u>( addr+0 ) << 0 ) |
-				(readHandler<Bit8u>( addr+1 ) << 8 ) |
-				(readHandler<Bit8u>( addr+2 ) << 16 ) |
+				(readHandler<Bit8u>( addr+0 ) << 0 ) | 
+				(readHandler<Bit8u>( addr+1 ) << 8 ) | 
+				(readHandler<Bit8u>( addr+2 ) << 16 ) | 
 				(readHandler<Bit8u>( addr+3 ) << 24 );
 		else
 			return readHandler<Bit32u>( addr );
@@ -425,7 +426,7 @@ public:
 		pixels.d|=(data & vga.config.full_map_mask);
 		((Bit32u*)vga.mem.linear)[addr]=pixels.d;
 //		if(vga.config.compatible_chain4)
-//			((Bit32u*)vga.mem.linear)[CHECKED2(addr+64*1024)]=pixels.d;
+//			((Bit32u*)vga.mem.linear)[CHECKED2(addr+64*1024)]=pixels.d; 
 	}
 public:
 	VGA_UnchainedVGA_Handler()  {
@@ -468,8 +469,6 @@ public:
 		return vga.draw.font[addr];
 	}
 	void writeb(PhysPt addr,Bitu val){
-        // ALOG_DEBUG("VGA_TEXT_PageHandler: writeb: addr:%x, value: %d", addr, (unsigned int)val);
-
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		if (vga.seq.map_mask & 0x4) {
 			vga.draw.font[addr]=(Bit8u)val;
@@ -533,7 +532,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
-		MEM_CHANGED( addr );
+		MEM_CHANGED( addr );	
 		hostWrite<Bit32u>( &vga.mem.linear[addr], val );
 	}
 };
@@ -573,14 +572,14 @@ public:
 	Bitu readw(PhysPt addr) {
 		addr = vga.svga.bank_read_full + (PAGING_GetPhysicalAddress(addr) & 0xffff);
 		addr = CHECKED4(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0) |
 			(readHandler(addr+1) << 8);
 	}
 	Bitu readd(PhysPt addr) {
 		addr = vga.svga.bank_read_full + (PAGING_GetPhysicalAddress(addr) & 0xffff);
 		addr = CHECKED4(addr);
-		return
+		return 
 			(readHandler(addr+0) << 0)  |
 			(readHandler(addr+1) << 8)  |
 			(readHandler(addr+2) << 16) |
@@ -685,9 +684,9 @@ public:
 //			|PFLAG_NOCODE;
 	}
 	HostPt GetHostReadPt(Bitu phys_page) {
-		if (vga.tandy.mem_bank & 1)
+		if (vga.tandy.mem_bank & 1) 
 			phys_page&=0x03;
-		else
+		else 
 			phys_page&=0x07;
 		return vga.tandy.mem_base + (phys_page * 4096);
 	}
@@ -705,7 +704,7 @@ public:
 	HostPt GetHostReadPt(Bitu phys_page) {
 		phys_page-=0xb8;
 		//test for a unaliged bank, then replicate 2x16kb
-		if (vga.tandy.mem_bank & 1)
+		if (vga.tandy.mem_bank & 1) 
 			phys_page&=0x03;
 		return vga.tandy.mem_base + (phys_page * 4096);
 	}
@@ -722,7 +721,7 @@ public:
 	Bitu readb(PhysPt /*addr*/) {
 //		LOG(LOG_VGA, LOG_NORMAL ) ( "Read from empty memory space at %x", addr );
 		return 0xff;
-	}
+	} 
 	void writeb(PhysPt /*addr*/,Bitu /*val*/) {
 //		LOG(LOG_VGA, LOG_NORMAL ) ( "Write %x to empty memory space at %x", val, addr );
 	}
@@ -808,7 +807,7 @@ void VGA_SetupHandlers(void) {
 		return;
 	case M_LIN4:
 		newHandler = &vgaph.lin4;
-		break;
+		break;	
 	case M_LIN15:
 	case M_LIN16:
 	case M_LIN32:
@@ -823,7 +822,7 @@ void VGA_SetupHandlers(void) {
 		if (vga.config.chained) {
 			if(vga.config.compatible_chain4)
 				newHandler = &vgaph.cvga;
-			else
+			else 
 #ifdef VGA_LFB_MAPPED
 				newHandler = &vgaph.map;
 #else
@@ -834,11 +833,11 @@ void VGA_SetupHandlers(void) {
 		}
 		break;
 	case M_EGA:
-		if (vga.config.chained)
+		if (vga.config.chained) 
 			newHandler = &vgaph.cega;
 		else
 			newHandler = &vgaph.uega;
-		break;
+		break;	
 	case M_TEXT:
 		/* Check if we're not in odd/even mode */
 		if (vga.gfx.miscellaneous & 0x2) newHandler = &vgaph.map;
@@ -945,6 +944,6 @@ void VGA_SetupMemory(Section* sec) {
 	if (machine==MCH_PCJR) {
 		/* PCJr does not have dedicated graphics memory but uses
 		   conventional memory below 128k */
-		//TODO map?
-	}
+		//TODO map?	
+	} 
 }

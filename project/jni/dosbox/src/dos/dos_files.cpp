@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: dos_files.cpp,v 1.110 2009/04/26 19:13:32 harekiet Exp $ */
+/* $Id: dos_files.cpp,v 1.113 2009-08-31 18:03:08 qbix79 Exp $ */
 
 #include <string.h>
 #include <stdlib.h>
@@ -73,8 +73,7 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 		*drive=(name_int[0] | 0x20)-'a';
 		name_int+=2;
 	}
-
-	if (*drive>=DOS_DRIVES || !Drives[*drive]) {
+	if (*drive>=DOS_DRIVES || !Drives[*drive]) { 
 		DOS_SetError(DOSERR_PATH_NOT_FOUND);
 		return false;
 	}
@@ -95,7 +94,7 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 		case '!':	case '%':	case '{':	case '}':	case '`':	case '~':
 		case '_':	case '-':	case '.':	case '*':	case '?':	case '&':
 		case '\'':	case '+':	case '^':	case 246:	case 255:	case 0xa0:
-		case 0xe5:
+		case 0xe5:	case 0xbd:
 			upname[w++]=c;
 			break;
 		default:
@@ -180,6 +179,10 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 				if((strlen(tempdir) - strlen(ext)) > 8) memmove(tempdir + 8, ext, 5);
 			} else tempdir[8]=0;
 
+			if (strlen(fullname)+strlen(tempdir)>=DOS_PATHLENGTH) {
+				DOS_SetError(DOSERR_PATH_NOT_FOUND);return false;
+			}
+		   
 			strcat(fullname,tempdir);
 			tempdir[0]=0;
 			w=0;r++;
@@ -195,7 +198,7 @@ bool DOS_MakeName(char const * const name,char * const fullname,Bit8u * drive) {
 bool DOS_GetCurrentDir(Bit8u drive,char * const buffer) {
 	if (drive==0) drive=DOS_GetDefaultDrive();
 	else drive--;
-	if ((drive>DOS_DRIVES) || (!Drives[drive])) {
+	if ((drive>=DOS_DRIVES) || (!Drives[drive])) {
 		DOS_SetError(DOSERR_INVALID_DRIVE);
 		return false;
 	}
@@ -365,7 +368,7 @@ bool DOS_ReadFile(Bit16u entry,Bit8u * data,Bit16u * amount) {
 	};
 //TODO maybe another code :)
 /*
-	if (!(Files[handle]->flags & OPEN_READ)) {
+	if ((Files[handle]->flags & 0x0f) == OPEN_WRITE)) {
 		DOS_SetError(DOSERR_INVALID_HANDLE);
 		return false;
 	}
@@ -386,14 +389,13 @@ bool DOS_WriteFile(Bit16u entry,Bit8u * data,Bit16u * amount) {
 		DOS_SetError(DOSERR_INVALID_HANDLE);
 		return false;
 	};
-//TODO maybe another code :)
 /*
-	if (!(Files[handle]->flags & OPEN_WRITE)) {
+	if ((Files[handle]->flags & 0x0f) == OPEN_READ)) {
 		DOS_SetError(DOSERR_INVALID_HANDLE);
 		return false;
 	}
 */
-	Bit16u towrite=*amount;;
+	Bit16u towrite=*amount;
 	bool ret=Files[handle]->Write(data,&towrite);
 	*amount=towrite;
 	return ret;
@@ -674,7 +676,7 @@ bool DOS_Canonicalize(char const * const name,char * const big) {
 bool DOS_GetFreeDiskSpace(Bit8u drive,Bit16u * bytes,Bit8u * sectors,Bit16u * clusters,Bit16u * free) {
 	if (drive==0) drive=DOS_GetDefaultDrive();
 	else drive--;
-	if ((drive>DOS_DRIVES) || (!Drives[drive])) {
+	if ((drive>=DOS_DRIVES) || (!Drives[drive])) {
 		DOS_SetError(DOSERR_INVALID_DRIVE);
 		return false;
 	}
@@ -777,11 +779,17 @@ static bool isvalid(const char in){
 #define PARSE_RET_BADDRIVE      0xff
 
 Bit8u FCB_Parsename(Bit16u seg,Bit16u offset,Bit8u parser ,char *string, Bit8u *change) {
-	char * string_begin=string;Bit8u ret=0;
-	DOS_FCB fcb(seg,offset);
+	char * string_begin=string;
+	Bit8u ret=0;
+	if (!(parser & PARSE_DFLT_DRIVE)) {
+		// default drive forced, this intentionally invalidates an extended FCB
+		mem_writeb(PhysMake(seg,offset),0);
+	}
+	DOS_FCB fcb(seg,offset,false);	// always a non-extended FCB
 	bool hasdrive,hasname,hasext,finished;
 	hasdrive=hasname=hasext=finished=false;
-	Bitu index=0;Bit8u fill=' ';
+	Bitu index=0;
+	Bit8u fill=' ';
 /* First get the old data from the fcb */
 #ifdef _MSC_VER
 #pragma pack (1)
@@ -1066,7 +1074,9 @@ Bit8u DOS_FCBRandomRead(Bit16u seg,Bit16u offset,Bit16u numRec,bool restore) {
  */
 
 	DOS_FCB fcb(seg,offset);
-	Bit32u random;Bit16u old_block;Bit8u old_rec;
+	Bit32u random;
+	Bit16u old_block=0;
+	Bit8u old_rec=0;
 	Bit8u error=0;
 
 	/* Set the correct record from the random data */
@@ -1089,7 +1099,9 @@ Bit8u DOS_FCBRandomRead(Bit16u seg,Bit16u offset,Bit16u numRec,bool restore) {
 Bit8u DOS_FCBRandomWrite(Bit16u seg,Bit16u offset,Bit16u numRec,bool restore) {
 /* see FCB_RandomRead */
 	DOS_FCB fcb(seg,offset);
-	Bit32u random;Bit16u old_block;Bit8u old_rec;
+	Bit32u random;
+	Bit16u old_block=0;
+	Bit8u old_rec=0;
 	Bit8u error=0;
 
 	/* Set the correct record from the random data */

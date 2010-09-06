@@ -102,7 +102,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-/* $Id: gui_tk.h,v 1.6 2009/05/17 15:28:05 c2woody Exp $ */
+/* $Id: gui_tk.h,v 1.6 2009-05-17 15:28:05 c2woody Exp $ */
 
 #ifndef GUI__TOOLKIT_H
 #define GUI__TOOLKIT_H
@@ -1714,7 +1714,7 @@ public:
 			last = p;
 			p = p->getParent();
 		}
-		static_cast<ToplevelWindow *>(last2)->addCloseHandler(this);
+		dynamic_cast<ToplevelWindow *>(last2)->addCloseHandler(this);
 	}
 
 	~TransientWindow() {
@@ -1725,7 +1725,7 @@ public:
 			last = p;
 			p = p->getParent();
 		}
-		static_cast<ToplevelWindow *>(last2)->removeCloseHandler(this);
+		dynamic_cast<ToplevelWindow *>(last2)->removeCloseHandler(this);
 	 }
 
 	virtual void move(int x, int y) { relx = x; rely = y;
@@ -2131,8 +2131,8 @@ protected:
 	/// Execute handlers.
 	virtual void actionExecuted(ActionEventSource *src, const String &arg) {
 		for (std::list<Window *>::iterator i = children.begin(); i != children.end(); ++i) {
-			Radiobox *r = static_cast<Radiobox*>(*i);
-			if (r != NULL && src != static_cast<ActionEventSource*>(r)) r->setChecked(false);
+			Radiobox *r = dynamic_cast<Radiobox*>(*i);
+			if (r != NULL && src != dynamic_cast<ActionEventSource*>(r)) r->setChecked(false);
 		}
 		executeAction(src->getName());
 	}
