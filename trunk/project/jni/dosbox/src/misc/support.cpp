@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: support.cpp,v 1.37 2009/05/27 09:15:42 qbix79 Exp $ */
+/* $Id: support.cpp,v 1.37 2009-05-27 09:15:42 qbix79 Exp $ */
 
 #include <string.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
-
+  
 #include "dosbox.h"
 #include "debug.h"
 #include "support.h"
@@ -44,9 +44,9 @@ void lowcase(std::string &str) {
 	int (*tf)(int) = std::tolower;
 	std::transform(str.begin(), str.end(), str.begin(), tf);
 }
+  
 
-
-/*
+/* 
 	Ripped some source from freedos for this one.
 
 */
@@ -63,7 +63,7 @@ void strreplace(char * str,char o,char n) {
 		str++;
 	}
 }
-char *ltrim(char *str) {
+char *ltrim(char *str) { 
 	while (*str && isspace(*reinterpret_cast<unsigned char*>(str))) str++;
 	return str;
 }
@@ -114,7 +114,7 @@ char * ScanCMDRemain(char * cmd) {
 		while ( *scan && !isspace(*reinterpret_cast<unsigned char*>(scan)) ) scan++;
 		*scan=0;
 		return found;
-	} else return 0;
+	} else return 0; 
 }
 
 char * StripWord(char *&line) {

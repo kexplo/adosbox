@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.Window;
 import android.view.WindowManager;
 
 public class DosBoxMain extends Activity {
@@ -27,7 +26,6 @@ public class DosBoxMain extends Activity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
 		mGLView = new DemoGLSurfaceView(this);
@@ -54,7 +52,6 @@ class DemoRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void onSurfaceChanged(GL10 gl, int w, int h) {
-		// gl.glViewport(0, 0, w, h);
 		nativeResize(w, h);
 	}
 
@@ -95,8 +92,7 @@ class DemoGLSurfaceView extends GLSurfaceView {
 		if (event.getAction() == MotionEvent.ACTION_MOVE)
 			action = 2;
 		if (action >= 0) {
-			// Disable Mouse for the moment
-			//nativeMouse((int) event.getX(), (int) event.getY(), action);
+			nativeMouse((int) event.getX(), (int) event.getY(), action);
 		}
 		return true;
 	}

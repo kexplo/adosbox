@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: drive_iso.cpp,v 1.25 2009/05/27 09:15:41 qbix79 Exp $ */
+/* $Id: drive_iso.cpp,v 1.27 2009-09-22 21:48:08 c2woody Exp $ */
 
 #include <cctype>
 #include <cstring>
@@ -46,8 +46,7 @@ private:
 	Bit16u info;
 };
 
-isoFile::isoFile(isoDrive *drive, const char *name, FileStat_Block *stat, Bit32u offset)
-{
+isoFile::isoFile(isoDrive *drive, const char *name, FileStat_Block *stat, Bit32u offset) {
 	this->drive = drive;
 	time = stat->time;
 	date = stat->date;
@@ -99,13 +98,11 @@ bool isoFile::Read(Bit8u *data, Bit16u *size)
 	return true;
 }
 
-bool isoFile::Write(Bit8u *data, Bit16u *size)
-{
+bool isoFile::Write(Bit8u* /*data*/, Bit16u* /*size*/) {
 	return false;
 }
 
-bool isoFile::Seek(Bit32u *pos, Bit32u type)
-{
+bool isoFile::Seek(Bit32u *pos, Bit32u type) {
 	switch (type) {
 		case DOS_SEEK_SET:
 			filePos = fileBegin + *pos;
@@ -199,9 +196,8 @@ void isoDrive::Activate(void) {
 	UpdateMscdex(driveLetter, fileName, subUnit);
 }
 
-bool isoDrive::FileOpen(DOS_File **file, char *name, Bit32u flags)
-{
-	if (flags == OPEN_WRITE) {
+bool isoDrive::FileOpen(DOS_File **file, char *name, Bit32u flags) {
+	if ((flags & 0x0f) == OPEN_WRITE) {
 		DOS_SetError(DOSERR_ACCESS_DENIED);
 		return false;
 	}
@@ -221,38 +217,32 @@ bool isoDrive::FileOpen(DOS_File **file, char *name, Bit32u flags)
 	return success;
 }
 
-bool isoDrive::FileCreate(DOS_File **file, char *name, Bit16u attributes)
-{
+bool isoDrive::FileCreate(DOS_File** /*file*/, char* /*name*/, Bit16u /*attributes*/) {
 	DOS_SetError(DOSERR_ACCESS_DENIED);
 	return false;
 }
 
-bool isoDrive::FileUnlink(char *name)
-{
+bool isoDrive::FileUnlink(char* /*name*/) {
 	DOS_SetError(DOSERR_ACCESS_DENIED);
 	return false;
 }
 
-bool isoDrive::RemoveDir(char *dir)
-{
+bool isoDrive::RemoveDir(char* /*dir*/) {
 	DOS_SetError(DOSERR_ACCESS_DENIED);
 	return false;
 }
 
-bool isoDrive::MakeDir(char *dir)
-{
+bool isoDrive::MakeDir(char* /*dir*/) {
 	DOS_SetError(DOSERR_ACCESS_DENIED);
 	return false;
 }
 
-bool isoDrive::TestDir(char *dir)
-{
+bool isoDrive::TestDir(char *dir) {
 	isoDirEntry de;	
 	return (lookup(&de, dir) && IS_DIR(de.fileFlags));
 }
 
-bool isoDrive::FindFirst(char *dir, DOS_DTA &dta, bool fcb_findfirst)
-{
+bool isoDrive::FindFirst(char *dir, DOS_DTA &dta, bool fcb_findfirst) {
 	isoDirEntry de;
 	if (!lookup(&de, dir)) {
 		DOS_SetError(DOSERR_PATH_NOT_FOUND);
@@ -260,7 +250,10 @@ bool isoDrive::FindFirst(char *dir, DOS_DTA &dta, bool fcb_findfirst)
 	}
 	
 	// get a directory iterator and save its id in the dta
-	dta.SetDirID((Bit16u)GetDirIterator(&de));
+	int dirIterator = GetDirIterator(&de);
+	bool isRoot = (*dir == 0);
+	dirIterators[dirIterator].root = isRoot;
+	dta.SetDirID((Bit16u)dirIterator);
 
 	Bit8u attr;
 	char pattern[ISO_MAXPATHNAME];
@@ -274,7 +267,7 @@ bool isoDrive::FindFirst(char *dir, DOS_DTA &dta, bool fcb_findfirst)
 			DOS_SetError(DOSERR_NO_MORE_FILES);		
 			return false;
 		}
-	} else if ((attr & DOS_ATTR_VOLUME) && (*dir == 0) && !fcb_findfirst) {
+	} else if ((attr & DOS_ATTR_VOLUME) && isRoot && !fcb_findfirst) {
 		if (WildFileCmp(discLabel,pattern)) {
 			// Get Volume Label (DOS_ATTR_VOLUME) and only in basedir and if it matches the searchstring
 			dta.SetResult(discLabel, 0, 0, 0, DOS_ATTR_VOLUME);
@@ -285,13 +278,13 @@ bool isoDrive::FindFirst(char *dir, DOS_DTA &dta, bool fcb_findfirst)
 	return FindNext(dta);
 }
 
-bool isoDrive::FindNext(DOS_DTA &dta)
-{
+bool isoDrive::FindNext(DOS_DTA &dta) {
 	Bit8u attr;
 	char pattern[DOS_NAMELENGTH_ASCII];
 	dta.GetSearchParams(attr, pattern);
 	
 	int dirIterator = dta.GetDirID();
+	bool isRoot = dirIterators[dirIterator].root;
 	
 	isoDirEntry de;
 	while (GetNextDirEntry(dirIterator, &de)) {
@@ -300,7 +293,7 @@ bool isoDrive::FindNext(DOS_DTA &dta)
 		else findAttr |= DOS_ATTR_ARCHIVE;
 		if (IS_HIDDEN(de.fileFlags)) findAttr |= DOS_ATTR_HIDDEN;
 
-		if (WildFileCmp((char*)de.ident, pattern)
+		if (!(isRoot && de.ident[0]=='.') && WildFileCmp((char*)de.ident, pattern)
 			&& !(~attr & findAttr & (DOS_ATTR_DIRECTORY | DOS_ATTR_HIDDEN | DOS_ATTR_SYSTEM))) {
 			
 			/* file is okay, setup everything to be copied in DTA Block */
@@ -324,8 +317,7 @@ bool isoDrive::FindNext(DOS_DTA &dta)
 	return false;
 }
 
-bool isoDrive::Rename(char *oldname, char *newname)
-{
+bool isoDrive::Rename(char* /*oldname*/, char* /*newname*/) {
 	DOS_SetError(DOSERR_ACCESS_DENIED);
 	return false;
 }
@@ -456,12 +448,15 @@ void isoDrive::FreeDirIterator(const int dirIterator)
 	
 	// if this was the last aquired iterator decrement nextFreeIterator
 	if ((dirIterator + 1) % MAX_OPENDIRS == nextFreeDirIterator) {
-		nextFreeDirIterator--;
+		if (nextFreeDirIterator>0) {
+			nextFreeDirIterator--;
+		} else {
+			nextFreeDirIterator = MAX_OPENDIRS-1;
+		}
 	}
 }
 
-bool isoDrive::ReadCachedSector(Bit8u** buffer, const Bit32u sector)
-{
+bool isoDrive::ReadCachedSector(Bit8u** buffer, const Bit32u sector) {
 	// get hash table entry
 	int pos = sector % ISO_MAX_HASH_TABLE_SIZE;
 	SectorHashEntry& he = sectorHashEntries[pos];

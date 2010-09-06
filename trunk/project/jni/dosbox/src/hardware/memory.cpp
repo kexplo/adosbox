@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: memory.cpp,v 1.56 2009/05/27 09:15:41 qbix79 Exp $ */
+/* $Id: memory.cpp,v 1.56 2009-05-27 09:15:41 qbix79 Exp $ */
 
 #include "dosbox.h"
 #include "mem.h"
@@ -75,7 +75,7 @@ public:
 		}
 #endif
 		return 0;
-	}
+	} 
 	void writeb(PhysPt addr,Bitu val) {
 #if C_DEBUG
 		LOG_MSG("Illegal write to %x, CS:IP %8x:%8x",addr,SegValue(cs),reg_eip);
@@ -211,7 +211,7 @@ Bitu MEM_TotalPages(void) {
 
 Bitu MEM_FreeLargest(void) {
 	Bitu size=0;Bitu largest=0;
-	Bitu index=XMS_START;
+	Bitu index=XMS_START;	
 	while (index<memory.pages) {
 		if (!memory.mhandles[index]) {
 			size++;
@@ -227,7 +227,7 @@ Bitu MEM_FreeLargest(void) {
 
 Bitu MEM_FreeTotal(void) {
 	Bitu free=0;
-	Bitu index=XMS_START;
+	Bitu index=XMS_START;	
 	while (index<memory.pages) {
 		if (!memory.mhandles[index]) free++;
 		index++;
@@ -235,7 +235,7 @@ Bitu MEM_FreeTotal(void) {
 	return free;
 }
 
-Bitu MEM_AllocatedPages(MemHandle handle)
+Bitu MEM_AllocatedPages(MemHandle handle) 
 {
 	Bitu pages = 0;
 	while (handle>0) {
@@ -248,7 +248,7 @@ Bitu MEM_AllocatedPages(MemHandle handle)
 //TODO Maybe some protection for this whole allocation scheme
 
 INLINE Bitu BestMatch(Bitu size) {
-	Bitu index=XMS_START;
+	Bitu index=XMS_START;	
 	Bitu first=0;
 	Bitu best=0xfffffff;
 	Bitu best_first=0;
@@ -257,7 +257,7 @@ INLINE Bitu BestMatch(Bitu size) {
 		if (!first) {
 			/* Check if this is a free page */
 			if (!memory.mhandles[index]) {
-				first=index;
+				first=index;	
 			}
 		} else {
 			/* Check if this still is used page */
@@ -404,15 +404,15 @@ MemHandle MEM_NextHandle(MemHandle handle) {
 
 MemHandle MEM_NextHandleAt(MemHandle handle,Bitu where) {
 	while (where) {
-		where--;
+		where--;	
 		handle=memory.mhandles[handle];
 	}
 	return handle;
 }
 
 
-/*
-	A20 line handling,
+/* 
+	A20 line handling, 
 	Basically maps the 4 pages at the 1mb to 0mb in the default page directory
 */
 bool MEM_A20_Enabled(void) {
@@ -509,7 +509,7 @@ void mem_writed(PhysPt address,Bit32u val) {
 	mem_writed_inline(address,val);
 }
 
-static void write_p92(Bitu port,Bitu val,Bitu iolen) {
+static void write_p92(Bitu port,Bitu val,Bitu iolen) {	
 	// Bit 0 = system reset (switch back to real mode)
 	if (val&1) E_Exit("XMS: CPU reset via port 0x92 not supported.");
 	memory.a20.controlport = val & ~2;
@@ -540,14 +540,14 @@ class MEMORY:public Module_base{
 private:
 	IO_ReadHandleObject ReadHandler;
 	IO_WriteHandleObject WriteHandler;
-public:
+public:	
 	MEMORY(Section* configuration):Module_base(configuration){
 		Bitu i;
 		Section_prop * section=static_cast<Section_prop *>(configuration);
-
+	
 		/* Setup the Physical Page Links */
 		Bitu memsize=section->Get_int("memsize");
-
+	
 		if (memsize < 1) memsize = 1;
 		/* max 63 to solve problems with certain xms handlers */
 		if (memsize > MAX_MEMORY-1) {
@@ -597,19 +597,17 @@ public:
 		delete [] memory.phandlers;
 		delete [] memory.mhandles;
 	}
-};
+};	
 
-
-static MEMORY* test;
-
+	
+static MEMORY* test;	
+	
 static void MEM_ShutDown(Section * sec) {
 	delete test;
 }
 
 void MEM_Init(Section * sec) {
 	/* shutdown function */
-    printf("\n\n");
 	test = new MEMORY(sec);
 	sec->AddDestroyFunction(&MEM_ShutDown);
-    printf("\n\n");
 }

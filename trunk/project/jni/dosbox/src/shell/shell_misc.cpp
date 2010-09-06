@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: shell_misc.cpp,v 1.54 2009/05/27 09:15:42 qbix79 Exp $ */
+/* $Id: shell_misc.cpp,v 1.54 2009-05-27 09:15:42 qbix79 Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +63,6 @@ void DOS_Shell::InputCommand(char * line) {
 			size=0;			//Kill the while loop
 			continue;
 		}
-
 		switch (c) {
 		case 0x00:				/* Extended Keys */
 			{
@@ -432,7 +431,7 @@ bool DOS_Shell::Execute(char * name,char * args) {
 		/* delete old batch file if call is not active*/
 		bool temp_echo=echo; /*keep the current echostate (as delete bf might change it )*/
 		if(bf && !call) delete bf;
-		bf=new BatchFile(this,fullname,line);
+		bf=new BatchFile(this,fullname,name,line);
 		echo=temp_echo; //restore it.
 	} 
 	else 

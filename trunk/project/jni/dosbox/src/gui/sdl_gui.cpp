@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2009  The DOSBox Team
+ *  Copyright (C) 2002-2010  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/* $Id: sdl_gui.cpp,v 1.11 2009/02/25 19:58:11 c2woody Exp $ */
+/* $Id: sdl_gui.cpp,v 1.11 2009-02-25 19:58:11 c2woody Exp $ */
 
 #if 0
 #include "SDL.h"
@@ -416,11 +416,11 @@ public:
 		int i = 0;
 		Property *prop;
 		while ((prop = section->Get_prop(i))) {
-			Prop_bool   *pbool   = static_cast<Prop_bool*>(prop);
-			Prop_int    *pint    = static_cast<Prop_int*>(prop);
-			Prop_double  *pdouble  = static_cast<Prop_double*>(prop);
-			Prop_hex    *phex    = static_cast<Prop_hex*>(prop);
-			Prop_string *pstring = static_cast<Prop_string*>(prop);
+			Prop_bool   *pbool   = dynamic_cast<Prop_bool*>(prop);
+			Prop_int    *pint    = dynamic_cast<Prop_int*>(prop);
+			Prop_double  *pdouble  = dynamic_cast<Prop_double*>(prop);
+			Prop_hex    *phex    = dynamic_cast<Prop_hex*>(prop);
+			Prop_string *pstring = dynamic_cast<Prop_string*>(prop);
 
 			PropertyEditor *p;
 			if (pbool) p = new PropertyEditorBool(this, 5+250*(i/6), 40+(i%6)*30, section, prop);
@@ -474,7 +474,7 @@ public:
 			}
 			content->setText(lines);
 		} else if (arg == "Execute Now") {
-			UI_RunCommands(static_cast<GUI::ScreenSDL*>(getScreen()), content->getText());
+			UI_RunCommands(dynamic_cast<GUI::ScreenSDL*>(getScreen()), content->getText());
 		} else ToplevelWindow::actionExecuted(b, arg);
 	}
 };
@@ -569,9 +569,9 @@ public:
 		if (arg == "Close" || arg == "Cancel") {
 			running = false;
 		} else if (arg == "Keyboard") {
-			UI_Shutdown(static_cast<GUI::ScreenSDL*>(getScreen()));
+			UI_Shutdown(dynamic_cast<GUI::ScreenSDL*>(getScreen()));
 			MAPPER_Run(false);
-			UI_Startup(static_cast<GUI::ScreenSDL*>(getScreen()));
+			UI_Startup(dynamic_cast<GUI::ScreenSDL*>(getScreen()));
 		} else if (sname == "autoexec") {
 			Section_line *section = static_cast<Section_line *>(control->GetSection((const char *)sname));
 			new AutoexecEditor(getScreen(), 50, 30, section);
