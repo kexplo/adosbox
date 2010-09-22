@@ -708,7 +708,7 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	SDL_VideoSurface = NULL;	/* In case it's freed by driver */
 
 	mode = video->SetVideoMode(this, prev_mode,video_w,video_h,video_bpp,flags);
-    ALOG_DEBUG("real set video mode: w:%d, h:%d, bpp:%d, flags:%d: new mode: %s",
+    ALOG_DEBUG("real set video mode: w:%d, h:%d, bpp:%d, flags:%x: new mode: %s",
             video_w, video_h, video_bpp, flags, mode==NULL?"null":"non-null");
 
 	if ( mode ) { /* Prevent resize events from mode change */

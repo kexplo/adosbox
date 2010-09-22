@@ -492,6 +492,8 @@ dosurface:
 					(sdl.desktop.doublebuf ? SDL_DOUBLEBUF|SDL_ASYNCBLIT : 0) | SDL_HWPALETTE);
 				if (sdl.surface == NULL) E_Exit("Could not set fullscreen video mode %ix%i-%i: %s",sdl.desktop.full.width,sdl.desktop.full.height,bpp,SDL_GetError());
 			} else {
+                ALOG_DEBUG("Double buffer?%s", sdl.desktop.doublebuf?"yes":"no");
+
 				sdl.clip.x=0;sdl.clip.y=0;
 				sdl.surface=SDL_SetVideoMode(width,height,bpp,
 					SDL_FULLSCREEN | ((flags & GFX_CAN_RANDOM) ? SDL_SWSURFACE : SDL_HWSURFACE) |
