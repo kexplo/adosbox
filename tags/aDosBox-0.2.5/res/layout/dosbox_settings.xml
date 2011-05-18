@@ -1,0 +1,62 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/scroll" android:layout_width="fill_parent"
+	android:layout_height="wrap_content" android:scrollbars="vertical"
+	android:scrollbarFadeDuration="0">
+	<LinearLayout android:layout_marginLeft="10dip"
+		android:layout_width="fill_parent" android:layout_height="wrap_content"
+		android:id="@+id/dosbox_settings_ll" android:orientation="vertical"
+		android:layout_marginRight="10px">
+		<LinearLayout android:layout_height="wrap_content"
+			android:id="@+id/cyclechange_step_ll" android:layout_width="match_parent">
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:textSize="26sp"
+				android:layout_weight="1" android:id="@+id/cpucycle_up_tv"
+				android:text="@string/cpucycles_change_step" android:gravity="center_vertical"></TextView>
+			<Button android:layout_height="wrap_content"
+				android:layout_width="80dip" android:text="@string/up" android:id="@+id/cycleup_step_bt" android:textSize="20sp"></Button>
+			<Button android:layout_height="wrap_content"
+				android:layout_width="80dip" android:text="@string/down" android:id="@+id/cycledown_step_bt" android:textSize="20sp"></Button>
+		</LinearLayout>
+		<LinearLayout android:layout_width="match_parent"
+			android:layout_height="wrap_content" android:id="@+id/cpucycle_ll">
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:textSize="26sp"
+				android:layout_weight="1" android:id="@+id/cpucycle_change_tv"
+				android:text="@string/cpucycle_change" android:gravity="center_vertical"></TextView>
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:id="@+id/cpucycleshow_tv"
+				android:textSize="26sp" android:text="#" android:layout_weight="1"
+				android:gravity="center"></TextView>
+			<Button android:id="@+id/cycle_inc_bt" android:layout_height="wrap_content"
+				android:text="+" android:layout_width="80dip" android:textSize="20sp"></Button>
+			<Button android:id="@+id/cycle_dec_bt" android:layout_height="wrap_content"
+				android:text="-" android:layout_width="80dip" android:textSize="20sp"></Button>
+		</LinearLayout>
+		<LinearLayout android:layout_width="match_parent"
+			android:layout_height="wrap_content" android:id="@+id/frameskip_ll">
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:textSize="26sp"
+				android:layout_weight="1" android:id="@+id/frameskip_change_tv"
+				android:text="@string/frameskip_change" android:gravity="center_vertical"></TextView>
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:id="@+id/frameskip_show__tv"
+				android:textSize="26sp" android:text="#" android:layout_weight="1"
+				android:gravity="center"></TextView>
+			<Button android:layout_height="wrap_content" android:text="+"
+				android:id="@+id/frameskip_inc_bt" android:layout_width="80dip" android:textSize="20sp"></Button>
+			<Button android:layout_height="wrap_content" android:id="@+id/frameskip_dec_bt"
+				android:text="-" android:layout_width="80dip" android:textSize="20sp"></Button>
+		</LinearLayout>
+		<LinearLayout android:layout_width="match_parent"
+			android:layout_height="wrap_content" android:id="@+id/config_ll">
+			<TextView android:layout_width="wrap_content"
+				android:layout_height="wrap_content" android:id="@+id/config_tv"
+				android:text="@string/config" android:textSize="26sp"
+				android:layout_weight="1" android:gravity="center_vertical"></TextView>
+			<Button android:layout_height="wrap_content" android:id="@+id/config_load_bt"
+				android:text="@string/load" android:layout_width="80dip" android:textSize="20sp"></Button>
+			<Button android:layout_height="wrap_content" android:text="@string/save"
+				android:id="@+id/config_save_bt" android:layout_width="80dip" android:textSize="20sp"></Button>
+		</LinearLayout>
+	</LinearLayout>
+</ScrollView>
